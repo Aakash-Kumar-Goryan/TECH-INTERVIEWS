@@ -10,10 +10,13 @@ This document provides detailed explanations for each topic listed in the System
 
 ## API Design
 - **REST**: Architectural style using HTTP methods (GET, POST, etc.), stateless communication, and resource-based URLs.
-- **gRPC**: High-performance, open-source RPC framework using Protocol Buffers, suitable for microservices.
+- **gRPC**: High-performance, open-source RPC framework using Protocol Buffers, suitable for microservices. For more, see [gRPC in API Design](./API_Design.md#grpc).
 - **GraphQL**: Query language for APIs, allows clients to request exactly the data they need.
 - **Versioning**: Managing changes to APIs without breaking existing clients (e.g., v1, v2 in URLs).
 - **Documentation**: Clear, up-to-date docs (Swagger/OpenAPI) help consumers use APIs correctly.
+
+For a detailed guide, see [API Design: Concepts and Best Practices](./API_Design.md).
+
 
 ## Scalability, Reliability, Availability, Maintainability
 - **Scalability**: Ability to handle increased load by adding resources (horizontal/vertical scaling).
