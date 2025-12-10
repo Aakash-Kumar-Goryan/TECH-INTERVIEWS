@@ -2,22 +2,42 @@
 
 ## Definition
 
-The **Factory Pattern** defines an interface for creating an object but lets subclasses alter the type of objects that will be created. It encapsulates object creation logic in one place.
+The **Factory Pattern** handles object creation logic. It defines an interface for creating objects, but allows subclasses (or a helper class) to decide which class to instantiate.
+
+> ⚠️ **Nuance**: In interviews, distinguish between **Simple Factory** (a helper class with a switch-case) and **Factory Method Pattern** (inheritance-based creation). The example below is a **Simple Factory**.
+
+---
+
+## UML Class Diagram (Simple Factory)
+
+```mermaid
+classDiagram
+    class Shape {
+        <<interface>>
+        +draw()
+    }
+    class Circle {
+        +draw()
+    }
+    class Rectangle {
+        +draw()
+    }
+    class ShapeFactory {
+        +getShape(type: String): Shape
+    }
+
+    Shape <|.. Circle
+    Shape <|.. Rectangle
+    ShapeFactory ..> Shape : creates
+```
 
 ---
 
 ## Use Cases
 
-- When you don’t want the client to instantiate objects directly.
-- When you want to delegate the responsibility of object instantiation to a separate class.
-- When you have multiple implementations of an interface or superclass.
-
----
-
-## Real-World Analogies
-
-- **Vehicle Factory** → Depending on user input, it returns a `Car`, `Bike`, or `Truck`.
-- **Document Converter** → Returns the appropriate parser for PDF, Word, or Excel.
+- **Decoupling**: Client doesn't need to know `new Circle()`.
+- **Complex Construction**: If creating an object requires 5 steps/dependencies, do it in the factory.
+- **Conditional Creation**: Create different objects based on environment (e.g., `WindowsButton` vs `MacButton`).
 
 ---
 
@@ -25,25 +45,16 @@ The **Factory Pattern** defines an interface for creating an object but lets sub
 
 ### ✅ Centralized Object Creation
 
-- Keeps instantiation logic in one place.
+- Keeps the "messy" `new` keyword logic in one place.
 
-### ✅ Decouples Clients from Concrete Implementations
+### ✅ Open/Closed Principle (Partial)
 
-- Client code only knows the interface, not the specific class being used.
-
-### ✅ Enables Runtime Decision Making
-
-- Objects can be instantiated based on input/configuration.
+- Client code (`Main`) is Open for Extension (can handle new Shapes) but Closed for Modification (doesn't need changes if new Shapes are added).
+- *Note*: The `ShapeFactory` itself might need modification unless dynamic registration usage is used.
 
 ---
 
-## Frequently Asked in Interviews
-
-> One of the most commonly asked patterns to test encapsulation, extensibility, and object-oriented design.
-
----
-
-## Class Structure
+## Class Structure (Simple Factory)
 
 ### 1. Product Interface
 
@@ -73,13 +84,18 @@ class Rectangle implements Shape {
 
 ```java
 class ShapeFactory {
-    public Shape getShape(String shapeType) {
-        if (shapeType.equalsIgnoreCase("circle")) {
-            return new Circle();
-        } else if (shapeType.equalsIgnoreCase("rectangle")) {
-            return new Rectangle();
+    // 💡 Pro Tip: Make this static if you don't need state
+    public static Shape getShape(String shapeType) {
+        if (shapeType == null) return null;
+        
+        switch (shapeType.toLowerCase()) { // Java 7+ supports String in switch
+            case "circle":
+                return new Circle();
+            case "rectangle":
+                return new Rectangle();
+            default:
+                throw new IllegalArgumentException("Unknown shape type: " + shapeType);
         }
-        return null;
     }
 }
 ```
@@ -89,33 +105,62 @@ class ShapeFactory {
 ```java
 public class Main {
     public static void main(String[] args) {
-        ShapeFactory factory = new ShapeFactory();
-
-        Shape shape1 = factory.getShape("circle");
+        Shape shape1 = ShapeFactory.getShape("circle");
         shape1.draw(); // Drawing a Circle
-
-        Shape shape2 = factory.getShape("rectangle");
-        shape2.draw(); // Drawing a Rectangle
     }
 }
 ```
-### OOP Concepts Used
+
+---
+
+## 🚀 Advanced Implementation (Interview Bonus)
+
+**Problem**: The `if-else` or `switch` violates OCP (you modify `ShapeFactory` to add `Triangle`).
+**Solution**: Use a Map registry (Java Supplier).
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
+
+class AdvancedShapeFactory {
+    private static final Map<String, Supplier<Shape>> registry = new HashMap<>();
+
+    static {
+        registry.put("circle", Circle::new);
+        registry.put("rectangle", Rectangle::new);
+    }
+
+    public static void registerShape(String type, Supplier<Shape> supplier) {
+        registry.put(type, supplier);
+    }
+
+    public static Shape getShape(String type) {
+        Supplier<Shape> shape = registry.get(type.toLowerCase());
+        if (shape != null) return shape.get();
+        throw new IllegalArgumentException("Invalid type");
+    }
+}
+```
+
+---
+
+## OOP Concepts Used
 
 | Concept         | Description                                                                 |
 |----------------|-----------------------------------------------------------------------------|
-| **Encapsulation** | Object creation logic is hidden from the client.         |
-| **Abstraction**   | Factory method provides a level of abstraction over the concrete classes.    |
-| **Polymorphism**  | Returned objects share a common interface and are used polymorphically. |
+| **Encapsulation** | Hides the complexity of object creation.                                     |
+| **Abstraction**   | Client interacts with the `Shape` interface, not concrete classes.           |
+| **Polymorphism**  | Factory returns the interface type (`Shape`).                                |
 
-### SOLID Principles Demonstrated
+## SOLID Principles
 
 | Principle       | How It Applies                                                                 |
 |-----------------|----------------------------------------------------------------------------------|
-| **S - SRP**      | Object creation logic is separated from business logic.             |
-| **O - OCP**      | New product types can be added without changing client code.               |
-| **L - LSP**      | All created objects follow a common interface or base class.        |
-| **I - ISP**      | Product interfaces expose only what the client needs.     |
-| **D - DIP**      | High-level modules depend on abstractions (interface), not concrete classes.  |
+| **S - SRP**      | Creation logic is moved out of the Client and into the Factory.                  |
+| **O - OCP**      | The Client is closed for modification. Only the Factory needs updates (unless using Map approach). |
+| **D - DIP**      | Client depends on Abstraction (`Shape`), not Concretions.                        |
 
 ## Summary
-🧠 Factory Pattern is all about centralizing object creation and hiding the instantiation logic, making your system easier to extend and maintain.
+
+The Factory Pattern is the "entry point" to decoupling your system. By stopping code from using `new ConcreteClass()` everywhere, you make it testable and flexible.

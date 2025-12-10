@@ -6,12 +6,46 @@ The **Observer Pattern** defines a one-to-many dependency between objects so tha
 
 ---
 
+## UML Class Diagram
+
+```mermaid
+classDiagram
+    class Subject {
+        <<interface>>
+        +registerObserver(o: Observer)
+        +removeObserver(o: Observer)
+        +notifyObservers()
+    }
+    class Observer {
+        <<interface>>
+        +update(message: String)
+    }
+    class ConcreteSubject {
+        -observers: List<Observer>
+        -state: String
+        +registerObserver(o: Observer)
+        +removeObserver(o: Observer)
+        +notifyObservers()
+        +setState(state: String)
+    }
+    class ConcreteObserver {
+        -name: String
+        +update(message: String)
+    }
+
+    Subject <|.. ConcreteSubject
+    Observer <|.. ConcreteObserver
+    Subject "1" o--> "*" Observer : notifies
+```
+
+---
+
 ## Use Cases
 
 Common scenarios where the Observer Pattern is useful:
 
 - **Event Handling Systems**
-- **UI Frameworks**
+- **UI Frameworks** (e.g., Button click listeners)
 - **Notification Systems**
 - **Real-time Systems**
 - **Pub/Sub (Publish–Subscribe) Mechanism**
@@ -70,6 +104,9 @@ interface Observer {
 
 ### 3. Concrete Subject
 ```java
+import java.util.ArrayList;
+import java.util.List;
+
 class NewsAgency implements Subject {
     private List<Observer> observers = new ArrayList<>();
     private String news;
@@ -93,7 +130,6 @@ class NewsAgency implements Subject {
         notifyObservers();
     }
 }
-
 ```
 
 ### 4. Concrete Observers
@@ -146,11 +182,40 @@ public class Main {
 
 ### Output
 
-```java
+```text
 Alice received news via Email: New Java Version Released!
 Bob received news via SMS: New Java Version Released!
 Bob received news via SMS: Spring Boot 3.0 Launched!
 ```
+
+---
+
+## 🔍 Deep Dive: Implementation Variations
+
+### Push vs. Pull Model
+1.  **Push Model** (Used in example): Subject sends specific data to Observers via the update method.
+    *   *Pros*: Observers don't need to query back.
+    *   *Cons*: Subject might send unused data; coupling increases if data format is complex.
+2.  **Pull Model**: Subject notifies "I changed", and Observers call `subject.getState()` to fetch what they need.
+    *   *Pros*: Flexible; Observers fetch only relevant data.
+    *   *Cons*: Two calls required (notify + callback); Subject must expose getter methods.
+
+### Java Historical Context
+*   **Deprecated**: `java.util.Observer` and `java.util.Observable` are **deprecated** since Java 9.
+*   **Issues**: `Observable` refers to a class (limiting multiple inheritance), no type safety, and not serializable.
+*   **Modern Replacement**: Use `java.beans.PropertyChangeListener` or **Java Flow API** (`java.util.concurrent.Flow`) for reactive streams.
+
+---
+
+## ⚠️ Common Pitfalls (Interview Hotspots)
+
+### 1. The Lapsed Listener Problem (Memory Leak)
+If an observer fails to unsubscribe (deregister), the Subject holds a strong reference to it, preventing Garbage Collection.
+*   **Solution**: Explicitly call `removeObserver()`, or use **WeakReferences** for observers.
+
+### 2. Concurrency Issues
+If multiple threads update the Subject, or if Observers take a long time to process, it can block the Subject.
+*   **Solution**: Use thread-safe lists (e.g., `CopyOnWriteArrayList`) or notify observers asynchronously.
 
 ---
 
