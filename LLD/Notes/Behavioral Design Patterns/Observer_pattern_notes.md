@@ -96,6 +96,7 @@ interface Subject {
 ```
 
 ### 2. Observer Interface
+
 ```java
 interface Observer {
     void update(String message);
@@ -103,6 +104,7 @@ interface Observer {
 ```
 
 ### 3. Concrete Subject
+
 ```java
 import java.util.ArrayList;
 import java.util.List;
@@ -133,6 +135,7 @@ class NewsAgency implements Subject {
 ```
 
 ### 4. Concrete Observers
+
 ```java
 class EmailSubscriber implements Observer {
     private String name;
@@ -160,6 +163,7 @@ class SmsSubscriber implements Observer {
 ```
 
 ### 5. Usage Example
+
 ```java
 public class Main {
     public static void main(String[] args) {
@@ -193,29 +197,35 @@ Bob received news via SMS: Spring Boot 3.0 Launched!
 ## 🔍 Deep Dive: Implementation Variations
 
 ### Push vs. Pull Model
-1.  **Push Model** (Used in example): Subject sends specific data to Observers via the update method.
-    *   *Pros*: Observers don't need to query back.
-    *   *Cons*: Subject might send unused data; coupling increases if data format is complex.
-2.  **Pull Model**: Subject notifies "I changed", and Observers call `subject.getState()` to fetch what they need.
-    *   *Pros*: Flexible; Observers fetch only relevant data.
-    *   *Cons*: Two calls required (notify + callback); Subject must expose getter methods.
+
+1. **Push Model** (Used in example): Subject sends specific data to Observers via the update method.
+    - *Pros*: Observers don't need to query back.
+    - *Cons*: Subject might send unused data; coupling increases if data format is complex.
+2. **Pull Model**: Subject notifies "I changed", and Observers call `subject.getState()` to fetch what they need.
+    - *Pros*: Flexible; Observers fetch only relevant data.
+    - *Cons*: Two calls required (notify + callback); Subject must expose getter methods.
 
 ### Java Historical Context
-*   **Deprecated**: `java.util.Observer` and `java.util.Observable` are **deprecated** since Java 9.
-*   **Issues**: `Observable` refers to a class (limiting multiple inheritance), no type safety, and not serializable.
-*   **Modern Replacement**: Use `java.beans.PropertyChangeListener` or **Java Flow API** (`java.util.concurrent.Flow`) for reactive streams.
+
+- **Deprecated**: `java.util.Observer` and `java.util.Observable` are **deprecated** since Java 9.
+- **Issues**: `Observable` refers to a class (limiting multiple inheritance), no type safety, and not serializable.
+- **Modern Replacement**: Use `java.beans.PropertyChangeListener` or **Java Flow API** (`java.util.concurrent.Flow`) for reactive streams.
 
 ---
 
 ## ⚠️ Common Pitfalls (Interview Hotspots)
 
 ### 1. The Lapsed Listener Problem (Memory Leak)
+
 If an observer fails to unsubscribe (deregister), the Subject holds a strong reference to it, preventing Garbage Collection.
-*   **Solution**: Explicitly call `removeObserver()`, or use **WeakReferences** for observers.
+
+- **Solution**: Explicitly call `removeObserver()`, or use **WeakReferences** for observers.
 
 ### 2. Concurrency Issues
+
 If multiple threads update the Subject, or if Observers take a long time to process, it can block the Subject.
-*   **Solution**: Use thread-safe lists (e.g., `CopyOnWriteArrayList`) or notify observers asynchronously.
+
+- **Solution**: Use thread-safe lists (e.g., `CopyOnWriteArrayList`) or notify observers asynchronously.
 
 ---
 
@@ -228,7 +238,6 @@ If multiple threads update the Subject, or if Observers take a long time to proc
 | **Polymorphism**  | Different observers implement the same `update()` method differently.       |
 | **Composition**   | Subject holds a list of observers and interacts through their interface.    |
 
-
 ## SOLID Principles Demonstrated
 
 | Principle       | How It Applies                                                                 |
@@ -240,6 +249,7 @@ If multiple threads update the Subject, or if Observers take a long time to proc
 | **D - DIP**      | Subject interacts with `Observer` interface, not concrete implementations.     |
 
 ## Key Concepts Recap
+
 - **Subject (Observable)**: Knows its observers and notifies them of changes.
 - **Observer**: Gets notified when the subject updates.
 - **Push-based Communication**: Subject sends updated data to observers.

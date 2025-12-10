@@ -139,7 +139,33 @@ Paid ₹500 using UPI.
 | **I - ISP**      | `PaymentStrategy` interface is minimal and specific (only `pay()` method).     |
 | **D - DIP**      | `ShoppingCart` depends on the abstraction `PaymentStrategy`, not concrete classes. |
 
-## Key Concepts Recap
+## 🚀 Modern Java Implementation (Lambda Support)
+
+Since the `Strategy` interface usually has a single abstract method (SAM), it qualifies as a **Functional Interface**. You can use Lambdas to avoid creating extra classes!
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        ShoppingCart cart = new ShoppingCart();
+
+        // Using Lambda for on-the-fly strategy
+        cart.setPaymentStrategy(amount -> System.out.println("Paid ₹" + amount + " via Bitcoin"));
+        
+        cart.checkout(999);
+    }
+}
+```
+
+---
+
+## 🆚 Strategy vs State Pattern (Interview Common Q)
+
+They look identical (Class Diagrams are same!), but their **intent** differs:
+- **Strategy**: "I want to perform ONE task, and I can choose HOW (algorithm) to do it." (Driven by Client).
+- **State**: "My specific behavior changes completely based on what state I am in." (Driven by Internal State).
+
+---
+
 - **Strategy Interface**: Defines the common algorithm contract.
 - **Concrete Strategies**: Implement the algorithm in different ways.
 - **Context**: Uses a strategy to perform a specific task.
