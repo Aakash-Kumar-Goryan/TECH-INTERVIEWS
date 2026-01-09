@@ -1,7 +1,0 @@
-- Thundering herd problem
-- clock synchronization
-- section length tuning
-- High availability
-- server can be removed or added
-- 1 day ~ 10^5 seconds
-- 2^64 ~ 10^19

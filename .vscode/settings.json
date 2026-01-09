@@ -1,0 +1,7 @@
+{
+    "workbench.editorAssociations": {
+        "*.md": "markdown-preview-enhanced"
+    },
+    "markdown-preview-enhanced.previewTheme": "atom-dark.css",
+    "markdown-preview-enhanced.mermaidTheme": "dark"
+}
