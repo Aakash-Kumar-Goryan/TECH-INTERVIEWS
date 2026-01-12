@@ -1,35 +1,63 @@
 # Design Patterns in Java
 
-Patterns are frequently asked, especially in LLD rounds. Know the classic implementations.
+> *Design patterns are battle-tested solutions to common problems. Let's explore them through real scenarios where you'd actually use them...*
 
-## 1. Creational Patterns
+---
 
-### Singleton
+## 🎬 The Pattern Story
 
-Ensure only one instance exists.
+Imagine you're building a complex system. You keep hitting the same types of problems:
+
+- "I need exactly ONE database connection" → **Singleton**
+- "I don't want clients knowing which class they're creating" → **Factory**
+- "This object has too many constructor parameters" → **Builder**
+- "I want to add features without changing the class" → **Decorator**
+
+Patterns are the wisdom of developers who solved these before!
+
+---
+
+## 📖 Chapter 1: Creational Patterns (Making Objects)
+
+### 🏛️ Singleton: "There Can Be Only One"
+
+**The Story**: Your app needs ONE database connection pool, ONE logger, ONE configuration. Not two. Not zero. ONE.
 
 ```java
-// Eager Initialization
-public class Singleton {
-    private static final Singleton INSTANCE = new Singleton();
+// 🌟 BEST: Enum Singleton
+public enum DatabasePool {
+    INSTANCE;
     
-    private Singleton() { }
+    private final List<Connection> connections = new ArrayList<>();
     
-    public static Singleton getInstance() {
-        return INSTANCE;
+    public Connection getConnection() {
+        // Return connection from pool
     }
 }
 
-// Lazy Initialization (Thread-Safe - Double-Checked Locking)
+// Usage
+DatabasePool.INSTANCE.getConnection();
+
+// Why Enum is best:
+// ✅ Thread-safe (JVM guarantees)
+// ✅ Serialization-safe (can't create duplicates via deserialization)
+// ✅ Reflection-safe (can't create via reflection)
+// ✅ Simple!
+```
+
+**Other Options (Know for Interviews):**
+
+```java
+// Double-Checked Locking (Classic Interview Question)
 public class Singleton {
-    private static volatile Singleton instance;
+    private static volatile Singleton instance;  // volatile is REQUIRED!
     
     private Singleton() { }
     
     public static Singleton getInstance() {
-        if (instance == null) {
+        if (instance == null) {                    // First check (no lock)
             synchronized (Singleton.class) {
-                if (instance == null) {
+                if (instance == null) {            // Second check (with lock)
                     instance = new Singleton();
                 }
             }
@@ -38,34 +66,23 @@ public class Singleton {
     }
 }
 
-// Bill Pugh (Initialize-On-Demand Holder)
+// Bill Pugh Holder (Lazy + Thread-safe)
 public class Singleton {
     private Singleton() { }
     
     private static class Holder {
-        private static final Singleton INSTANCE = new Singleton();
+        static final Singleton INSTANCE = new Singleton();
     }
     
     public static Singleton getInstance() {
-        return Holder.INSTANCE;
+        return Holder.INSTANCE;  // Class loaded only when called!
     }
-}
-
-// Enum Singleton (Best Practice)
-public enum Singleton {
-    INSTANCE;
-    
-    public void doSomething() { }
 }
 ```
 
-**Why Enum is best**: Serialization-safe, reflection-safe, thread-safe.
+### 🏭 Factory: "Don't Ask What, Just Ask For"
 
----
-
-### Factory Method
-
-Create objects without specifying exact class.
+**The Story**: Client should say "give me a notification" not "new SMSNotification(apiKey, sender, ...)".
 
 ```java
 // Product interface
@@ -76,102 +93,118 @@ public interface Notification {
 // Concrete products
 public class EmailNotification implements Notification {
     public void send(String message) {
-        System.out.println("Email: " + message);
+        System.out.println("📧 Email: " + message);
     }
 }
 
 public class SMSNotification implements Notification {
     public void send(String message) {
-        System.out.println("SMS: " + message);
+        System.out.println("📱 SMS: " + message);
     }
 }
 
-// Factory
+public class PushNotification implements Notification {
+    public void send(String message) {
+        System.out.println("🔔 Push: " + message);
+    }
+}
+
+// The Factory
 public class NotificationFactory {
     public static Notification create(String type) {
-        return switch (type) {
+        return switch (type.toUpperCase()) {
             case "EMAIL" -> new EmailNotification();
             case "SMS" -> new SMSNotification();
-            default -> throw new IllegalArgumentException("Unknown type");
+            case "PUSH" -> new PushNotification();
+            default -> throw new IllegalArgumentException("Unknown: " + type);
         };
     }
 }
 
-// Usage
-Notification notification = NotificationFactory.create("EMAIL");
-notification.send("Hello");
+// Client code - clean and oblivious!
+Notification notif = NotificationFactory.create("EMAIL");
+notif.send("Hello!");
 ```
 
----
+### 🏗️ Abstract Factory: "Family of Products"
 
-### Abstract Factory
-
-Create families of related objects.
+**The Story**: You need Windows buttons AND Windows checkboxes that look consistent together. Or Mac versions. But never mix!
 
 ```java
 // Abstract products
-public interface Button { void render(); }
-public interface Checkbox { void render(); }
+interface Button { void render(); }
+interface Checkbox { void render(); }
 
-// Concrete products for Windows
-public class WindowsButton implements Button {
-    public void render() { System.out.println("Windows Button"); }
+// Windows family
+class WindowsButton implements Button {
+    public void render() { System.out.println("[Windows Button]"); }
 }
-public class WindowsCheckbox implements Checkbox {
-    public void render() { System.out.println("Windows Checkbox"); }
+class WindowsCheckbox implements Checkbox {
+    public void render() { System.out.println("☐ Windows Checkbox"); }
 }
 
-// Concrete products for Mac
-public class MacButton implements Button {
-    public void render() { System.out.println("Mac Button"); }
+// Mac family  
+class MacButton implements Button {
+    public void render() { System.out.println("( Mac Button )"); }
 }
-public class MacCheckbox implements Checkbox {
-    public void render() { System.out.println("Mac Checkbox"); }
+class MacCheckbox implements Checkbox {
+    public void render() { System.out.println("◯ Mac Checkbox"); }
 }
 
 // Abstract Factory
-public interface GUIFactory {
+interface GUIFactory {
     Button createButton();
     Checkbox createCheckbox();
 }
 
-// Concrete Factories
-public class WindowsFactory implements GUIFactory {
+class WindowsFactory implements GUIFactory {
     public Button createButton() { return new WindowsButton(); }
     public Checkbox createCheckbox() { return new WindowsCheckbox(); }
 }
 
-public class MacFactory implements GUIFactory {
+class MacFactory implements GUIFactory {
     public Button createButton() { return new MacButton(); }
     public Checkbox createCheckbox() { return new MacCheckbox(); }
 }
+
+// Client picks a factory, gets consistent family
+GUIFactory factory = isWindows ? new WindowsFactory() : new MacFactory();
+Button btn = factory.createButton();       // Matching family
+Checkbox chk = factory.createCheckbox();   // Matching family
 ```
 
----
+### 🧱 Builder: "Complex Objects, Step by Step"
 
-### Builder
-
-Construct complex objects step by step.
+**The Story**: User has name (required), email (required), age (optional), phone (optional), address (optional)... Do you really want a constructor with 10 parameters?
 
 ```java
 public class User {
-    private final String name;      // Required
-    private final String email;     // Required
-    private final int age;          // Optional
-    private final String phone;     // Optional
+    // Required
+    private final String name;
+    private final String email;
+    
+    // Optional
+    private final int age;
+    private final String phone;
+    private final String address;
     
     private User(Builder builder) {
         this.name = builder.name;
         this.email = builder.email;
         this.age = builder.age;
         this.phone = builder.phone;
+        this.address = builder.address;
     }
     
     public static class Builder {
+        // Required
         private final String name;
         private final String email;
+        
+        // Optional with defaults
         private int age = 0;
         private String phone = "";
+        private String address = "";
         
         public Builder(String name, String email) {
             this.name = name;
@@ -180,11 +213,16 @@ public class User {
         
         public Builder age(int age) {
             this.age = age;
-            return this;
+            return this;  // Return this for chaining!
         }
         
         public Builder phone(String phone) {
             this.phone = phone;
+            return this;
+        }
+        
+        public Builder address(String address) {
+            this.address = address;
             return this;
         }
         
@@ -194,8 +232,8 @@ public class User {
     }
 }
 
-// Usage
-User user = new User.Builder("John", "john@example.com")
+// Beautiful fluent API!
+User user = new User.Builder("John", "john@email.com")
     .age(30)
     .phone("123-456-7890")
     .build();
@@ -203,153 +241,114 @@ User user = new User.Builder("John", "john@example.com")
 
 ---
 
-### Prototype
+## 📖 Chapter 2: Structural Patterns (Organizing Classes)
 
-Clone existing objects.
+### 🔌 Adapter: "Square Peg, Round Hole"
 
-```java
-public abstract class Shape implements Cloneable {
-    protected String color;
-    
-    public abstract Shape clone();
-}
-
-public class Circle extends Shape {
-    private int radius;
-    
-    public Circle(Circle source) {
-        this.color = source.color;
-        this.radius = source.radius;
-    }
-    
-    @Override
-    public Circle clone() {
-        return new Circle(this);
-    }
-}
-```
-
----
-
-## 2. Structural Patterns
-
-### Adapter
-
-Convert interface to work with incompatible classes.
+**The Story**: You have a cool new media player, but your app expects the old interface. Make them work together!
 
 ```java
-// Existing interface
-public interface MediaPlayer {
+// What your app expects
+interface MediaPlayer {
     void play(String filename);
 }
 
-// Incompatible interface
-public interface AdvancedMediaPlayer {
-    void playVlc(String filename);
-    void playMp4(String filename);
+// The new fancy player (different interface!)
+class AdvancedPlayer {
+    void playMp4(String file) { System.out.println("Playing MP4: " + file); }
+    void playVlc(String file) { System.out.println("Playing VLC: " + file); }
 }
 
-public class VlcPlayer implements AdvancedMediaPlayer {
-    public void playVlc(String filename) {
-        System.out.println("Playing VLC: " + filename);
-    }
-    public void playMp4(String filename) { }  // Not used
-}
-
-// Adapter
-public class MediaAdapter implements MediaPlayer {
-    private AdvancedMediaPlayer player;
-    
-    public MediaAdapter(String type) {
-        if (type.equals("vlc")) {
-            player = new VlcPlayer();
-        }
-    }
+// The Adapter - makes new work with old!
+class MediaAdapter implements MediaPlayer {
+    private AdvancedPlayer advancedPlayer = new AdvancedPlayer();
     
     @Override
     public void play(String filename) {
-        player.playVlc(filename);
+        if (filename.endsWith(".mp4")) {
+            advancedPlayer.playMp4(filename);
+        } else if (filename.endsWith(".vlc")) {
+            advancedPlayer.playVlc(filename);
+        }
     }
 }
+
+// Now your app works with both!
+MediaPlayer player = new MediaAdapter();
+player.play("movie.mp4");  // Works!
 ```
 
----
+### 🎨 Decorator: "Adding Toppings"
 
-### Decorator
-
-Add behavior dynamically without modifying class.
+**The Story**: You want to add features to objects without modifying their class. Like adding milk to coffee, then sugar, then whipped cream...
 
 ```java
-// Component
-public interface Coffee {
+// The base
+interface Coffee {
     double getCost();
     String getDescription();
 }
 
-// Concrete component
-public class SimpleCoffee implements Coffee {
-    public double getCost() { return 1.0; }
-    public String getDescription() { return "Simple coffee"; }
+class SimpleCoffee implements Coffee {
+    public double getCost() { return 2.0; }
+    public String getDescription() { return "Coffee"; }
 }
 
-// Decorator base
-public abstract class CoffeeDecorator implements Coffee {
-    protected Coffee wrappedCoffee;
+// The decorator base
+abstract class CoffeeDecorator implements Coffee {
+    protected Coffee wrapped;
     
-    public CoffeeDecorator(Coffee coffee) {
-        this.wrappedCoffee = coffee;
-    }
+    CoffeeDecorator(Coffee coffee) { this.wrapped = coffee; }
+    
+    public double getCost() { return wrapped.getCost(); }
+    public String getDescription() { return wrapped.getDescription(); }
 }
 
 // Concrete decorators
-public class MilkDecorator extends CoffeeDecorator {
-    public MilkDecorator(Coffee coffee) {
-        super(coffee);
-    }
+class Milk extends CoffeeDecorator {
+    Milk(Coffee coffee) { super(coffee); }
     
-    public double getCost() { return wrappedCoffee.getCost() + 0.5; }
-    public String getDescription() { return wrappedCoffee.getDescription() + ", milk"; }
+    public double getCost() { return super.getCost() + 0.5; }
+    public String getDescription() { return super.getDescription() + " + Milk"; }
 }
 
-public class SugarDecorator extends CoffeeDecorator {
-    public SugarDecorator(Coffee coffee) {
-        super(coffee);
-    }
+class Sugar extends CoffeeDecorator {
+    Sugar(Coffee coffee) { super(coffee); }
     
-    public double getCost() { return wrappedCoffee.getCost() + 0.2; }
-    public String getDescription() { return wrappedCoffee.getDescription() + ", sugar"; }
+    public double getCost() { return super.getCost() + 0.25; }
+    public String getDescription() { return super.getDescription() + " + Sugar"; }
 }
 
-// Usage
-Coffee coffee = new MilkDecorator(new SugarDecorator(new SimpleCoffee()));
-System.out.println(coffee.getDescription());  // Simple coffee, sugar, milk
-System.out.println(coffee.getCost());          // 1.7
+// Build your coffee!
+Coffee order = new Sugar(new Milk(new SimpleCoffee()));
+System.out.println(order.getDescription());  // "Coffee + Milk + Sugar"
+System.out.println(order.getCost());          // 2.75
+
+// Real Java examples:
+// BufferedInputStream wraps FileInputStream
+// Collections.synchronizedList() wraps ArrayList
 ```
 
-**Java examples**: `BufferedInputStream`, `Collections.synchronizedList()`
+### 🛡️ Proxy: "The Bouncer"
 
----
-
-### Proxy
-
-Control access to another object.
+**The Story**: Control access to an expensive object. Load it only when really needed!
 
 ```java
-public interface Image {
+interface Image {
     void display();
 }
 
-// Real object (expensive to create)
-public class RealImage implements Image {
+// Expensive real object
+class RealImage implements Image {
     private String filename;
     
-    public RealImage(String filename) {
+    RealImage(String filename) {
         this.filename = filename;
-        loadFromDisk();  // Expensive
+        loadFromDisk();  // Expensive! 💰
     }
     
     private void loadFromDisk() {
-        System.out.println("Loading " + filename);
+        System.out.println("Loading " + filename + "...");
     }
     
     public void display() {
@@ -357,292 +356,287 @@ public class RealImage implements Image {
     }
 }
 
-// Proxy (lazy loading)
-public class ImageProxy implements Image {
-    private RealImage realImage;
+// Proxy - lazy loading
+class ImageProxy implements Image {
+    private RealImage realImage;  // Not loaded yet!
     private String filename;
     
-    public ImageProxy(String filename) {
-        this.filename = filename;
+    ImageProxy(String filename) {
+        this.filename = filename;  // Just save the name
     }
     
     public void display() {
         if (realImage == null) {
-            realImage = new RealImage(filename);  // Load only when needed
+            realImage = new RealImage(filename);  // Load only NOW
         }
         realImage.display();
     }
 }
+
+// Usage
+Image img = new ImageProxy("photo.jpg");  // No loading yet!
+// ... later ...
+img.display();  // NOW it loads
 ```
 
-**Types**: Virtual (lazy), Remote (RMI), Protection (access control).
+### 🏠 Facade: "One Button to Rule Them All"
 
----
-
-### Facade
-
-Simplified interface to complex subsystem.
+**The Story**: Starting a computer involves CPU, memory, hard drive... but users just want `computer.start()`.
 
 ```java
-// Complex subsystem
-class CPU { void freeze() { } void execute() { } }
-class Memory { void load(long position, byte[] data) { } }
-class HardDrive { byte[] read(long lba, int size) { return new byte[0]; } }
+// Complex subsystems
+class CPU { void freeze() {} void execute() {} }
+class Memory { void load() {} }
+class HardDrive { byte[] read() { return new byte[0]; } }
 
-// Facade
-public class Computer {
+// Facade - simple interface
+class Computer {
     private CPU cpu = new CPU();
     private Memory memory = new Memory();
     private HardDrive hd = new HardDrive();
     
     public void start() {
         cpu.freeze();
-        memory.load(0, hd.read(0, 512));
+        memory.load();
+        hd.read();
         cpu.execute();
+        System.out.println("Computer started! 🖥️");
     }
 }
 
-// Usage
-Computer computer = new Computer();
-computer.start();  // Simple interface
+// User just does:
+new Computer().start();  // All complexity hidden!
 ```
 
 ---
 
-## 3. Behavioral Patterns
+## 📖 Chapter 3: Behavioral Patterns (Object Communication)
 
-### Strategy
+### 🎯 Strategy: "Pick Your Algorithm"
 
-Define a family of algorithms, make them interchangeable.
+**The Story**: Payment can be via credit card, PayPal, or crypto. Same checkout, different strategies!
 
 ```java
 // Strategy interface
-public interface PaymentStrategy {
+interface PaymentStrategy {
     void pay(int amount);
 }
 
 // Concrete strategies
-public class CreditCardPayment implements PaymentStrategy {
-    private String cardNumber;
-    
-    public CreditCardPayment(String cardNumber) {
-        this.cardNumber = cardNumber;
-    }
-    
+class CreditCard implements PaymentStrategy {
     public void pay(int amount) {
-        System.out.println("Paid " + amount + " via Credit Card");
+        System.out.println("💳 Paid $" + amount + " via Credit Card");
     }
 }
 
-public class PayPalPayment implements PaymentStrategy {
-    private String email;
-    
-    public PayPalPayment(String email) {
-        this.email = email;
-    }
-    
+class PayPal implements PaymentStrategy {
     public void pay(int amount) {
-        System.out.println("Paid " + amount + " via PayPal");
+        System.out.println("🅿️ Paid $" + amount + " via PayPal");
+    }
+}
+
+class Crypto implements PaymentStrategy {
+    public void pay(int amount) {
+        System.out.println("₿ Paid $" + amount + " via Crypto");
     }
 }
 
 // Context
-public class ShoppingCart {
-    private PaymentStrategy paymentStrategy;
+class ShoppingCart {
+    private PaymentStrategy payment;
     
-    public void setPaymentStrategy(PaymentStrategy strategy) {
-        this.paymentStrategy = strategy;
+    void setPaymentMethod(PaymentStrategy strategy) {
+        this.payment = strategy;
     }
     
-    public void checkout(int amount) {
-        paymentStrategy.pay(amount);
+    void checkout(int amount) {
+        payment.pay(amount);
     }
 }
 
-// Usage
+// Usage - swap algorithms at runtime!
 ShoppingCart cart = new ShoppingCart();
-cart.setPaymentStrategy(new CreditCardPayment("1234-5678"));
-cart.checkout(100);
+cart.setPaymentMethod(new CreditCard());
+cart.checkout(100);  // 💳 Paid $100 via Credit Card
 
-cart.setPaymentStrategy(new PayPalPayment("user@example.com"));
-cart.checkout(200);
+cart.setPaymentMethod(new Crypto());
+cart.checkout(200);  // ₿ Paid $200 via Crypto
 ```
 
-**Java examples**: `Comparator`, sorting strategies.
+### 👁️ Observer: "News Flash!"
 
----
-
-### Observer
-
-One-to-many dependency; notify observers of state changes.
+**The Story**: When news breaks, all subscribers get notified instantly!
 
 ```java
-// Observer interface
-public interface Observer {
-    void update(String message);
+// Observer
+interface Subscriber {
+    void update(String news);
 }
 
 // Subject
-public class NewsAgency {
-    private List<Observer> observers = new ArrayList<>();
-    private String news;
+class NewsAgency {
+    private List<Subscriber> subscribers = new ArrayList<>();
     
-    public void addObserver(Observer o) {
-        observers.add(o);
-    }
+    void subscribe(Subscriber s) { subscribers.add(s); }
+    void unsubscribe(Subscriber s) { subscribers.remove(s); }
     
-    public void removeObserver(Observer o) {
-        observers.remove(o);
-    }
-    
-    public void setNews(String news) {
-        this.news = news;
-        notifyObservers();
-    }
-    
-    private void notifyObservers() {
-        for (Observer o : observers) {
-            o.update(news);
+    void publishNews(String news) {
+        System.out.println("📢 Breaking: " + news);
+        for (Subscriber s : subscribers) {
+            s.update(news);
         }
     }
 }
 
-// Concrete observer
-public class NewsChannel implements Observer {
-    private String name;
-    
-    public NewsChannel(String name) {
-        this.name = name;
+// Concrete observers
+class PhoneApp implements Subscriber {
+    public void update(String news) {
+        System.out.println("📱 Phone notification: " + news);
     }
-    
-    public void update(String message) {
-        System.out.println(name + " received: " + message);
+}
+
+class EmailClient implements Subscriber {
+    public void update(String news) {
+        System.out.println("📧 Email received: " + news);
     }
 }
 
 // Usage
 NewsAgency agency = new NewsAgency();
-agency.addObserver(new NewsChannel("CNN"));
-agency.addObserver(new NewsChannel("BBC"));
-agency.setNews("Breaking news!");
+agency.subscribe(new PhoneApp());
+agency.subscribe(new EmailClient());
+
+agency.publishNews("Java 22 Released!");
+// 📢 Breaking: Java 22 Released!
+// 📱 Phone notification: Java 22 Released!
+// 📧 Email received: Java 22 Released!
 ```
 
-**Java examples**: `PropertyChangeListener`, event listeners.
+### 📝 Template Method: "The Recipe"
 
----
-
-### Template Method
-
-Define algorithm skeleton, let subclasses override steps.
+**The Story**: Every data processor reads, processes, writes. But HOW they do each step varies.
 
 ```java
-public abstract class DataProcessor {
-    
-    // Template method
+abstract class DataProcessor {
+    // The template method - DO NOT OVERRIDE!
     public final void process() {
         readData();
         processData();
         writeData();
     }
     
-    protected abstract void readData();
-    protected abstract void processData();
+    abstract void readData();
+    abstract void processData();
     
-    // Hook method (optional override)
-    protected void writeData() {
-        System.out.println("Default write implementation");
+    // Hook - optional override
+    void writeData() {
+        System.out.println("Default write");
     }
 }
 
-public class CSVProcessor extends DataProcessor {
-    protected void readData() {
-        System.out.println("Reading CSV file");
-    }
-    
-    protected void processData() {
-        System.out.println("Processing CSV data");
-    }
+class CSVProcessor extends DataProcessor {
+    void readData() { System.out.println("Reading CSV..."); }
+    void processData() { System.out.println("Parsing CSV rows..."); }
 }
 
-public class XMLProcessor extends DataProcessor {
-    protected void readData() {
-        System.out.println("Reading XML file");
-    }
-    
-    protected void processData() {
-        System.out.println("Processing XML data");
-    }
+class JSONProcessor extends DataProcessor {
+    void readData() { System.out.println("Reading JSON..."); }
+    void processData() { System.out.println("Parsing JSON objects..."); }
     
     @Override
-    protected void writeData() {
-        System.out.println("Writing XML output");
+    void writeData() {
+        System.out.println("Writing formatted JSON");
     }
 }
+
+// Same flow, different implementations!
+new CSVProcessor().process();
+new JSONProcessor().process();
 ```
 
----
+### ⌨️ Command: "Undo This!"
 
-### Command
-
-Encapsulate request as an object.
+**The Story**: Encapsulate commands as objects. Queue them, undo them, replay them!
 
 ```java
-// Command interface
-public interface Command {
+interface Command {
     void execute();
     void undo();
 }
 
 // Receiver
-public class Light {
-    public void on() { System.out.println("Light on"); }
-    public void off() { System.out.println("Light off"); }
+class TextEditor {
+    StringBuilder text = new StringBuilder();
+    
+    void insert(String s) { text.append(s); }
+    void delete(int n) { text.delete(text.length() - n, text.length()); }
+    String getText() { return text.toString(); }
 }
 
-// Concrete commands
-public class LightOnCommand implements Command {
-    private Light light;
+// Concrete command
+class InsertCommand implements Command {
+    private TextEditor editor;
+    private String textToInsert;
     
-    public LightOnCommand(Light light) {
-        this.light = light;
+    InsertCommand(TextEditor editor, String text) {
+        this.editor = editor;
+        this.textToInsert = text;
     }
     
-    public void execute() { light.on(); }
-    public void undo() { light.off(); }
+    public void execute() { editor.insert(textToInsert); }
+    public void undo() { editor.delete(textToInsert.length()); }
 }
 
-// Invoker
-public class RemoteControl {
-    private Command command;
+// Invoker with history
+class CommandHistory {
+    private Stack<Command> history = new Stack<>();
     
-    public void setCommand(Command command) {
-        this.command = command;
+    void execute(Command cmd) {
+        cmd.execute();
+        history.push(cmd);
     }
     
-    public void pressButton() {
-        command.execute();
-    }
-    
-    public void pressUndo() {
-        command.undo();
+    void undo() {
+        if (!history.isEmpty()) {
+            history.pop().undo();
+        }
     }
 }
+
+// Usage
+TextEditor editor = new TextEditor();
+CommandHistory history = new CommandHistory();
+
+history.execute(new InsertCommand(editor, "Hello "));
+history.execute(new InsertCommand(editor, "World!"));
+System.out.println(editor.getText());  // "Hello World!"
+
+history.undo();
+System.out.println(editor.getText());  // "Hello "
 ```
-
-**Use cases**: Undo/redo, queuing operations, macros.
 
 ---
 
-## 4. Pattern Selection Guide
+## 🎯 Pattern Selection Guide
 
-| Scenario | Pattern |
-|----------|---------|
-| Single instance | Singleton |
-| Object creation variation | Factory |
-| Complex object with many params | Builder |
-| Add behavior at runtime | Decorator |
-| Simplify complex system | Facade |
-| Interchangeable algorithms | Strategy |
-| Notify multiple objects of changes | Observer |
-| Encapsulate operations | Command |
-| Control object access | Proxy |
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Problem                              │  Pattern                        │
+├───────────────────────────────────────────────────────────────────────── │
+│  Need exactly one instance            │  Singleton (use Enum!)          │
+│  Don't want to expose which class     │  Factory Method                 │
+│  Need families of related objects     │  Abstract Factory               │
+│  Constructor has too many params      │  Builder                        │
+│  Need to copy objects                 │  Prototype                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Incompatible interfaces              │  Adapter                        │
+│  Add features without modifying       │  Decorator                      │
+│  Control access / lazy loading        │  Proxy                          │
+│  Simplify complex system              │  Facade                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Swap algorithms at runtime           │  Strategy                       │
+│  Notify multiple objects of changes   │  Observer                       │
+│  Define skeleton with variable steps  │  Template Method                │
+│  Encapsulate operations / undo        │  Command                        │
+└─────────────────────────────────────────────────────────────────────────┘
+```

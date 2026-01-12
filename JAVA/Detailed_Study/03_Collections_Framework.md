@@ -1,361 +1,600 @@
 # Collections Framework Deep Dive
 
-Collections internals are a FAANG staple. Understanding how they work enables optimal data structure choices.
+> *Collections are the workhorses of every Java program. Let's explore them through stories of how data actually lives and moves...*
 
-## 1. Collection Hierarchy
+---
+
+## 🎬 The Collection Kingdom
+
+Imagine your data as citizens living in different neighborhoods. Each neighborhood (collection) has its own rules, architecture, and personality.
 
 ```
-                    Iterable<E>
-                        │
-                   Collection<E>
-          ┌─────────────┼─────────────┐
-          │             │             │
-       List<E>       Set<E>       Queue<E>
-          │             │             │
-    ┌─────┴─────┐  ┌────┴────┐   ┌────┴────┐
-ArrayList  LinkedList  HashSet  TreeSet  PriorityQueue
-                           │
-                      LinkedHashSet
+                        👑 Iterable<E>
+                            │
+                       Collection<E>
+              ┌─────────────┼─────────────┐
+              │             │             │
+          📋 List<E>    🎯 Set<E>    📬 Queue<E>
+         "Ordered,      "No dupes,   "First-in,
+          indexed"       unique"      first-out"
 
 
-                      Map<K,V>
-          ┌─────────────┼─────────────┐
-      HashMap       TreeMap      LinkedHashMap
-          │
-  ConcurrentHashMap
+                       🗺️ Map<K,V>
+              ┌─────────────┼─────────────┐
+              │             │             │
+         HashMap       TreeMap      LinkedHashMap
+        "Fast lookup"  "Sorted"     "Remembers order"
 ```
 
 ---
 
-## 2. List Implementations
+## 📖 Chapter 1: The Array Apartment (ArrayList)
 
-### ArrayList
+**The Story**: ArrayList is like an apartment building. All residents live in numbered units. Easy to find anyone by their unit number, but moving in or out from the middle? Everyone has to shuffle!
 
-**Backed by**: Dynamic array (`Object[] elementData`)
+### The Blueprint
 
 ```java
-// Internal structure
-transient Object[] elementData;
-private int size;
+// What's really inside ArrayList
+Object[] elementData = new Object[10];  // The apartment building
+int size = 0;                            // Occupied units
+
+// Adding "Alice" to position 0
+elementData[0] = "Alice"; size++;        // Just assign, O(1)
+
+// Adding "Carol" to position 1 (between Alice and Bob)
+// Everyone from position 1 onwards must move! 😰
 ```
 
-**Operations**:
+### Life in the Apartment
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| `get(i)` | O(1) | Direct array access |
-| `add(e)` | O(1)* | Amortized (resizing is O(n)) |
-| `add(i, e)` | O(n) | Shifts elements right |
-| `remove(i)` | O(n) | Shifts elements left |
-| `contains(e)` | O(n) | Linear search |
+```
+Before inserting "Carol" at index 1:
+┌───────┬───────┬───────┬───────┬───────┐
+│ Alice │  Bob  │ David │       │       │
+│   0   │   1   │   2   │   3   │   4   │
+└───────┴───────┴───────┴───────┴───────┘
 
-**Resizing**:
+Insert at index 1:
+         💨 Everyone shifts right!
+┌───────┬───────┬───────┬───────┬───────┐
+│ Alice │ Carol │  Bob  │ David │       │
+│   0   │   1   │   2   │   3   │   4   │
+└───────┴───────┴───────┴───────┴───────┘
+```
 
-- Default capacity: 10
-- Grows by 50% when full: `newCapacity = oldCapacity + (oldCapacity >> 1)`
-- `Arrays.copyOf()` creates new array
-
-**Best Practice**: If size is known, use `new ArrayList<>(expectedSize)` to avoid resizing.
-
-### LinkedList
-
-**Backed by**: Doubly-linked list
+### When the Building Gets Full (Resizing)
 
 ```java
-// Internal structure
-private static class Node<E> {
-    E item;
-    Node<E> next;
-    Node<E> prev;
+// Default capacity: 10 units
+// When full: newCapacity = oldCapacity + (oldCapacity >> 1)
+//           = 10 + 5 = 15 (grow by 50%)
+
+// Behind the scenes:
+Object[] newBuilding = new Object[15];
+System.arraycopy(oldBuilding, 0, newBuilding, 0, size);
+// Everyone moves to bigger building! 📦
+```
+
+### The Performance Card
+
+| Operation | Time | What Happens |
+|-----------|------|--------------|
+| `get(index)` | O(1) | "Unit 42? Right here!" |
+| `add(element)` | O(1)* | Add to end, unless building full |
+| `add(index, e)` | O(n) | "Everyone move right!" |
+| `remove(index)` | O(n) | "Everyone move left!" |
+| `contains(e)` | O(n) | Check every unit door-to-door |
+
+**Pro Tip**: Know your guest count? `new ArrayList<>(1000)` avoids moving day!
+
+---
+
+## 📖 Chapter 2: The Chain Gang (LinkedList)
+
+**The Story**: LinkedList is like a train. Each car (node) only knows the car ahead and behind it. Great for adding cars anywhere, but finding car #500? Walk the whole train!
+
+### The Blueprint
+
+```java
+class Node<E> {
+    E item;           // The passenger
+    Node<E> next;     // "Car ahead is..."
+    Node<E> prev;     // "Car behind is..."
 }
-transient Node<E> first;
-transient Node<E> last;
+
+Node<E> first;  // Engine
+Node<E> last;   // Caboose
 ```
 
-**Operations**:
+### Visualizing the Chain
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| `get(i)` | O(n) | Traversal required |
-| `add(e)` | O(1) | Add to end (maintain `last`) |
-| `addFirst/Last` | O(1) | Direct pointer update |
-| `remove(i)` | O(n) | Find + O(1) unlink |
-| `contains(e)` | O(n) | Linear search |
+```
+           ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+  null ←── │ prev: null  │ ←── │ prev: ◀     │ ←── │ prev: ◀     │
+           │ item: Alice │     │ item: Bob   │     │ item: Carol │
+  first ─▶ │ next: ▶     │ ──▶ │ next: ▶     │ ──▶ │ next: null  │ ◀── last
+           └─────────────┘     └─────────────┘     └─────────────┘
+```
 
-**When to use LinkedList**:
+### Adding a New Car (O(1) at ends!)
 
-- Frequent add/remove at beginning
-- Implementing Queue/Deque (but `ArrayDeque` is usually faster)
+```
+Adding "New" after Alice (we have reference to Alice's node):
 
-**Rarely use**: `ArrayList` has better cache locality and is faster in practice for most use cases.
+Before: Alice ←→ Bob ←→ Carol
+
+1. Create new node
+2. New.prev = Alice
+3. New.next = Alice.next (Bob)
+4. Alice.next = New
+5. Bob.prev = New
+
+After:  Alice ←→ New ←→ Bob ←→ Carol
+
+Just 4 pointer updates! No shifting! 🎉
+```
+
+### The Bitter Truth
+
+```java
+// "Get me element 500" in LinkedList:
+Node<E> current = first;
+for (int i = 0; i < 500; i++) {
+    current = current.next;  // Walk... walk... walk...
+}
+return current.item;  // O(n) 😢
+
+// Same in ArrayList:
+return elementData[500];  // O(1) 🚀
+```
+
+**When to use LinkedList?** Almost never. ArrayList's cache locality wins. Use `ArrayDeque` for queue/stack.
 
 ---
 
-## 3. HashMap Internals (Critical for FAANG)
+## 📖 Chapter 3: The Hash Embassy (HashMap)
 
-### Structure
+**The Story**: HashMap is like an embassy with numbered counters. Your passport (key's hashCode) determines which counter you go to. But sometimes two people go to the same counter (collision!).
+
+### The Embassy Floor Plan
+
+```
+table[] (capacity = 16)
+┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
+│ 0 │ 1 │ 2 │ 3 │ 4 │ 5 │ 6 │ 7 │ 8 │ 9 │10 │11 │12 │13 │14 │15 │
+└───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+          │           │
+          ▼           ▼
+        [Node]      [Node]──▶[Node]──▶[Node]  ← Collision chain!
+        Alice       Bob       Carol     Dave
+```
+
+### The put() Journey
 
 ```java
-transient Node<K,V>[] table;  // Array of buckets
-transient int size;
-final float loadFactor;       // Default 0.75
-int threshold;                // size at which to resize
-```
+map.put("Alice", 100);
 
-### How `put()` Works
+// Step 1: Compute hash
+hash = "Alice".hashCode();                    // 92668751
+hash = hash ^ (hash >>> 16);                  // Extra scrambling
 
-1. Compute hash: `hash = key.hashCode() ^ (key.hashCode() >>> 16)`
-2. Find bucket: `index = hash & (n - 1)` (n is power of 2)
-3. If bucket empty: create new Node
-4. If bucket occupied:
-   - If key exists: update value
-   - Else: add to chain (linked list or tree)
+// Step 2: Find bucket
+index = hash & (capacity - 1);                // Fast modulo!
+// (capacity is always power of 2, so this works)
 
-### Treeification (Java 8+)
-
-When a bucket has **> 8 entries**, the linked list converts to a **Red-Black Tree**.
-
-```
-Bucket (before treeify):      Bucket (after treeify):
-   ↓                               ↓
-[Node]→[Node]→[Node]→[Node]    [TreeNode (root)]
-                                  /       \
-                           [TreeNode]  [TreeNode]
-```
-
-**Why?**: Linked list is O(n) for lookup. Tree is O(log n).
-
-**Untreeify**: When bucket drops to **< 6 entries**, converts back to list.
-
-### Resizing (Rehashing)
-
-Triggered when `size > threshold (capacity * loadFactor)`.
-
-- New capacity = old capacity * 2
-- All entries rehashed to new positions
-- **Expensive**: O(n) operation
-
-### ConcurrentHashMap (Thread-Safe)
-
-**Java 7**: Segment-based locking (16 segments by default).
-
-**Java 8+**: CAS (Compare-And-Swap) + synchronized blocks per bucket.
-
-```java
-// Java 8+ put operation (simplified)
-if (casTabAt(tab, i, null, new Node<>(hash, key, value))) {
-    // CAS succeeded, inserted with no lock
+// Step 3: Place in bucket
+if (bucket[2] == null) {
+    bucket[2] = new Node("Alice", 100);       // Empty? Just place!
 } else {
-    // Bucket exists, use synchronized on first node in bucket
-    synchronized (f) {
-        // Add to chain or tree
+    // Collision! Walk the chain...
+    for (Node n = bucket[2]; n != null; n = n.next) {
+        if (n.key.equals("Alice")) {
+            n.value = 100; return;            // Update existing
+        }
+    }
+    bucket[2].append(new Node("Alice", 100)); // Add to chain
+}
+```
+
+### The Treeification Magic (Java 8+)
+
+```
+When a bucket has > 8 entries... 🌲
+
+Before (O(n) lookup in chain):
+[Node]──▶[Node]──▶[Node]──▶[Node]──▶[Node]──▶[Node]──▶[Node]──▶[Node]──▶[Node]
+
+After treeification (O(log n) lookup):
+                    [TreeNode root]
+                   /               \
+            [TreeNode]           [TreeNode]
+            /       \            /       \
+      [TreeNode] [TreeNode] [TreeNode] [TreeNode]
+
+Threshold: > 8 entries → Tree
+Untreeify: < 6 entries → Back to List
+```
+
+### Why Power of 2 Capacity?
+
+```java
+// Normal modulo (slow):
+index = hash % 16;          // Division operation
+
+// Bitwise AND (fast):
+index = hash & (16 - 1);    // Same result when n is power of 2!
+index = hash & 0x0F;        // Just mask lower bits!
+
+// This is why HashMap always uses 16, 32, 64, 128...
+```
+
+### The Resize Earthquake
+
+```
+When size > capacity * loadFactor (default 0.75):
+16 * 0.75 = 12 entries triggers resize
+
+Before: 16 buckets   │  After: 32 buckets
+────────────────────┼────────────────────
+All entries must    │  Old bucket 5 splits into:
+be REHASHED!        │    → New bucket 5
+O(n) operation      │    → New bucket 21 (5 + 16)
+```
+
+---
+
+## 📖 Chapter 4: The Concurrent Embassy (ConcurrentHashMap)
+
+**The Story**: Multiple visitors can be served simultaneously, but each counter (bucket) has its own lock!
+
+### Evolution of Thread-Safety
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Hashtable (Legacy)                                                      │
+│ synchronized void put(K k, V v) { ... }                                 │
+│ 🔒 ONE big lock for entire table → Everyone waits!                      │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ConcurrentHashMap (Java 7): Segment Locks                               │
+│ ┌──────────────────┐┌──────────────────┐┌──────────────────┐           │
+│ │ 🔒 Segment 0     ││ 🔒 Segment 1     ││ 🔒 Segment 2     │           │
+│ │ [bucket][bucket] ││ [bucket][bucket] ││ [bucket][bucket] │           │
+│ └──────────────────┘└──────────────────┘└──────────────────┘           │
+│ 16 segments = 16 concurrent writes possible!                            │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ConcurrentHashMap (Java 8+): Per-Bucket Locking                         │
+│ ┌────┐┌────┐┌────┐┌────┐┌────┐┌────┐┌────┐┌────┐                       │
+│ │🔒 ││🔒 ││🔒 ││🔒 ││🔒 ││🔒 ││🔒 ││🔒 │  Each bucket!             │
+│ └────┘└────┘└────┘└────┘└────┘└────┘└────┘└────┘                       │
+│ + CAS for empty buckets (no lock at all!)                               │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### The Java 8+ put() Dance
+
+```java
+if (bucket[i] == null) {
+    // Empty bucket? Use CAS (no lock!)
+    if (CAS(bucket[i], null, newNode)) {
+        return;  // Success without any locking! 🚀
+    }
+} else {
+    // Bucket has data? Lock just this bucket
+    synchronized (bucket[i].firstNode) {
+        // Only threads hitting THIS bucket wait
+        addToChain(bucket[i], newNode);
     }
 }
 ```
 
-**Key Differences from HashMap**:
+### Critical Differences
 
 | Feature | HashMap | ConcurrentHashMap |
 |---------|---------|-------------------|
-| Thread-safe | No | Yes |
-| Null keys/values | Allowed | NOT allowed |
-| Iteration | Fail-fast | Weakly consistent |
+| Thread-safe | ❌ No | ✅ Yes |
+| Null keys | ✅ Allowed | ❌ NOT allowed |
+| Null values | ✅ Allowed | ❌ NOT allowed |
+| Iteration | Fail-fast 💥 | Weakly consistent |
+| Performance | 🚀 Single thread | 🚀 Multi-thread |
 
 ---
 
-## 4. TreeMap & TreeSet
+## 📖 Chapter 5: The Sorted Kingdom (TreeMap & TreeSet)
 
-**Backed by**: Red-Black Tree (self-balancing BST)
+**The Story**: Everything is kept in order. The Red-Black Tree is the royal guard ensuring no side of the kingdom grows too powerful (unbalanced).
 
-### Red-Black Tree Properties
+### The Red-Black Rules
 
-1. Every node is red or black
-2. Root is black
-3. Red nodes have black children
-4. All paths from root to leaves have same number of black nodes
+```
+Every citizen (node) follows these laws:
+1. You are either RED 🔴 or BLACK ⚫
+2. The King (root) is always BLACK ⚫
+3. RED 🔴 citizens cannot have RED 🔴 children
+4. Every path from King to a peasant (leaf) has same BLACK ⚫ count
+```
 
-### Operations
+### Why It Matters
 
-| Operation | Time |
-|-----------|------|
-| `get(k)` | O(log n) |
-| `put(k, v)` | O(log n) |
-| `remove(k)` | O(log n) |
-| `firstKey()`, `lastKey()` | O(log n) |
+```
+Unbalanced BST (worst case):      Red-Black Tree (guaranteed):
+        1                               4⚫
+         \                            /    \
+          2                         2🔴     6🔴
+           \                       /  \    /  \
+            3                    1⚫  3⚫ 5⚫  7⚫
+             \
+              4
+               \
+                5
+                
+Lookup: O(n) 😰                  Lookup: O(log n) 🎉
+```
 
-### Use Cases
-
-- Sorted iteration required
-- Range queries (`subMap`, `headMap`, `tailMap`)
-- Finding floor/ceiling keys
+### TreeMap Powers
 
 ```java
 TreeMap<Integer, String> map = new TreeMap<>();
-map.put(1, "one");
 map.put(5, "five");
-map.put(3, "three");
+map.put(2, "two");
+map.put(8, "eight");
+map.put(1, "one");
 
-map.floorKey(4);   // 3 (largest key <= 4)
-map.ceilingKey(2); // 3 (smallest key >= 2)
-map.subMap(1, 5);  // {1=one, 3=three} (keys in [1, 5))
+// Iteration is ALWAYS sorted!
+for (var entry : map.entrySet()) {
+    System.out.println(entry);  // 1, 2, 5, 8
+}
+
+// Range operations
+map.subMap(2, 6);      // {2=two, 5=five}  [2, 6)
+map.headMap(5);        // {1=one, 2=two}   < 5
+map.tailMap(5);        // {5=five, 8=eight} >= 5
+map.floorKey(4);       // 2 (largest key <= 4)
+map.ceilingKey(4);     // 5 (smallest key >= 4)
 ```
 
 ---
 
-## 5. LinkedHashMap
+## 📖 Chapter 6: The Memory Lane (LinkedHashMap)
 
-**Backed by**: HashMap + Doubly-linked list
+**The Story**: Like HashMap, but with a memory. It remembers the order things happened.
 
-Maintains **insertion order** (or access order with flag).
+### Dual Structure
 
-### Use Case: LRU Cache
+```
+HashMap buckets:                 + Linked List (maintains order):
+┌───┬───┬───┬───┐
+│ 0 │ 1 │ 2 │ 3 │               head ──▶ Alice ──▶ Bob ──▶ Carol ──▶ tail
+└───┴───┴───┴───┘                       (insertion order preserved)
+      │
+      ▼
+    [Node]
+```
+
+### LRU Cache in 10 Lines
 
 ```java
 class LRUCache<K, V> extends LinkedHashMap<K, V> {
-    private final int capacity;
+    private final int maxSize;
     
-    public LRUCache(int capacity) {
-        super(capacity, 0.75f, true); // true = access order
-        this.capacity = capacity;
+    LRUCache(int maxSize) {
+        super(maxSize, 0.75f, true);  // true = ACCESS order!
+        this.maxSize = maxSize;
     }
     
     @Override
     protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-        return size() > capacity;
+        return size() > maxSize;  // Auto-evict oldest!
     }
 }
+
+// Usage:
+LRUCache<String, User> cache = new LRUCache<>(100);
+cache.put("user1", alice);   // [alice]
+cache.put("user2", bob);     // [alice, bob]
+cache.get("user1");          // Access moves to end: [bob, alice]
+cache.put("user3", carol);   // If full, bob evicted: [alice, carol]
 ```
 
 ---
 
-## 6. Queue & Deque
+## 📖 Chapter 7: The Priority Waiting Room (PriorityQueue)
 
-### PriorityQueue
+**The Story**: Not first-come-first-serve. The most urgent patient always goes next!
 
-**Backed by**: Binary Min-Heap (array-based)
+### Binary Heap Under the Hood
 
-```java
-// Parent: (i-1)/2, Left child: 2i+1, Right child: 2i+2
-transient Object[] queue;
+```
+PriorityQueue<Integer> pq = new PriorityQueue<>();
+pq.offer(5); pq.offer(2); pq.offer(8); pq.offer(1);
+
+The array: [1, 2, 8, 5]      The logical tree:
+                                    1       ← min at root
+           Indexes:               /   \
+           0: parent            2       8
+           1, 2: children      /
+           3, 4: grandkids    5
+
+Parent of i: (i-1)/2
+Children of i: 2i+1, 2i+2
 ```
 
-| Operation | Time |
-|-----------|------|
-| `offer(e)` | O(log n) |
-| `poll()` | O(log n) |
-| `peek()` | O(1) |
+### The Bubble Dance
 
-**Not thread-safe**. Use `PriorityBlockingQueue` for concurrency.
+```
+offer(1) when heap is [2, 5, 8]:
 
-### ArrayDeque
+Step 1: Add to end       Step 2: Bubble up!
+      2                        1     ← 1 < 2, swap!
+    /   \                    /   \
+   5     8                  2     8
+  /                        /
+ 1                        5
 
-- Resizable circular array
-- Faster than `LinkedList` for stack/queue operations
-- No capacity limits
-
-```java
-Deque<Integer> stack = new ArrayDeque<>();
-stack.push(1);
-stack.pop();
-
-Deque<Integer> queue = new ArrayDeque<>();
-queue.offer(1);
-queue.poll();
+Array: [2,5,8,1] → [1,2,8,5]
 ```
 
 ---
 
-## 7. Comparable vs Comparator
+## 📖 Chapter 8: Sorting Citizens (Comparable vs Comparator)
 
-### Comparable (Natural Ordering)
+### Comparable: "I know my own worth"
 
 ```java
-public class Employee implements Comparable<Employee> {
-    private int id;
+class Employee implements Comparable<Employee> {
+    String name;
+    int salary;
     
     @Override
     public int compareTo(Employee other) {
-        return Integer.compare(this.id, other.id);
+        return Integer.compare(this.salary, other.salary);
+        // Negative: I'm smaller, Positive: I'm bigger, Zero: Equal
     }
 }
 
-Collections.sort(employees); // Uses natural ordering
+Collections.sort(employees);  // Uses MY compareTo
 ```
 
-### Comparator (Custom Ordering)
+### Comparator: "Let someone else decide"
 
 ```java
-// Lambda style
-Comparator<Employee> byName = (e1, e2) -> e1.getName().compareTo(e2.getName());
+// Multiple ways to sort the same objects:
+Comparator<Employee> byName = Comparator.comparing(Employee::getName);
+Comparator<Employee> bySalary = Comparator.comparing(Employee::getSalary);
+Comparator<Employee> bySalaryDesc = bySalary.reversed();
 
-// Method reference
-Comparator<Employee> byId = Comparator.comparing(Employee::getId);
+// Chain them!
+Comparator<Employee> byDeptThenSalary = Comparator
+    .comparing(Employee::getDepartment)
+    .thenComparing(Employee::getSalary)
+    .thenComparing(Employee::getName);
 
-// Chaining
-Comparator<Employee> byNameThenId = Comparator
-    .comparing(Employee::getName)
-    .thenComparing(Employee::getId);
-
-Collections.sort(employees, byName);
+employees.sort(byDeptThenSalary);
 ```
 
 ---
 
-## 8. Fail-Fast vs Fail-Safe
+## 📖 Chapter 9: The Modification Police (Fail-Fast vs Fail-Safe)
 
-### Fail-Fast (ArrayList, HashMap)
+### Fail-Fast: "Stop right there!"
 
 ```java
 List<String> list = new ArrayList<>(Arrays.asList("a", "b", "c"));
+
 for (String s : list) {
-    list.remove(s); // ConcurrentModificationException!
+    if (s.equals("b")) {
+        list.remove(s);  // 💥 ConcurrentModificationException!
+    }
 }
+
+// How it knows:
+int expectedModCount = list.modCount;  // Saved when iterator created
+// On every next(): if (modCount != expectedModCount) throw!
 ```
 
-**Mechanism**: Maintains `modCount`. Iterator checks if modified.
+**The Safe Way:**
 
-### Fail-Safe (ConcurrentHashMap, CopyOnWriteArrayList)
+```java
+// Use Iterator.remove()
+Iterator<String> it = list.iterator();
+while (it.hasNext()) {
+    if (it.next().equals("b")) {
+        it.remove();  // ✅ Safe!
+    }
+}
+
+// Or removeIf() (Java 8+)
+list.removeIf(s -> s.equals("b"));  // ✅ Clean!
+```
+
+### Fail-Safe: "You do you"
 
 ```java
 CopyOnWriteArrayList<String> list = new CopyOnWriteArrayList<>();
 list.add("a");
+
 for (String s : list) {
-    list.add("b"); // No exception, but iterator may not see "b"
+    list.add("b");  // ✅ No exception!
+    // Iterator works on a SNAPSHOT, doesn't see new "b"
 }
+// But writes are expensive (copies entire array)
 ```
 
 ---
 
-## 9. Performance Comparison
+## 🎯 The Decision Tree
 
-| Collection | Add | Contains/Get | Remove | Notes |
-|------------|-----|--------------|--------|-------|
-| ArrayList | O(1)* | O(n) / O(1) | O(n) | Cache-friendly |
-| LinkedList | O(1) | O(n) | O(n) | Extra memory per node |
-| HashSet | O(1) | O(1) | O(1) | No duplicates |
-| TreeSet | O(log n) | O(log n) | O(log n) | Sorted |
-| HashMap | O(1) | O(1) | O(1) | Key-value |
-| TreeMap | O(log n) | O(log n) | O(log n) | Sorted keys |
-| PriorityQueue | O(log n) | O(1) peek | O(log n) | Heap |
-
-*Amortized
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     WHICH COLLECTION DO I USE?                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Need key-value pairs?                                                  │
+│     ├─ Yes → Need sorted keys? → Yes → TreeMap                          │
+│     │                          → No  → Need thread-safe? → Yes → CHM    │
+│     │                                                    → No  → HashMap│
+│     └─ No ↓                                                             │
+│                                                                         │
+│  Need ordering?                                                         │
+│     ├─ By index → ArrayList (99% of the time)                           │
+│     ├─ By insertion → LinkedHashSet/Map                                 │
+│     ├─ Sorted → TreeSet                                                 │
+│     └─ By priority → PriorityQueue                                      │
+│                                                                         │
+│  Need uniqueness? → HashSet (unsorted) / TreeSet (sorted)               │
+│                                                                         │
+│  Need stack/queue? → ArrayDeque (NOT LinkedList!)                       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 10. Interview Questions
+## 📖 Chapter 10: The Grand Quiz
 
-**Q: HashMap vs Hashtable vs ConcurrentHashMap?**
+### Q: HashMap vs Hashtable vs ConcurrentHashMap?
 
 | Feature | HashMap | Hashtable | ConcurrentHashMap |
 |---------|---------|-----------|-------------------|
-| Thread-safe | No | Yes (synchronized methods) | Yes (fine-grained) |
-| Null keys/values | Yes | No | No |
-| Performance | Best (single-thread) | Poor (full lock) | Good (concurrent) |
+| Thread-safe | ❌ | ✅ (but slow) | ✅ (fast) |
+| Null key/value | ✅ / ✅ | ❌ / ❌ | ❌ / ❌ |
+| Lock granularity | N/A | Entire map | Per-bucket |
+| Modern? | ✅ | ❌ Legacy | ✅ |
 
-**Q: Why is initial capacity power of 2 in HashMap?**
+### Q: Why is capacity always power of 2?
 
-Allows using `hash & (n-1)` instead of `hash % n`. Bitwise AND is faster.
+```java
+// Allows this optimization:
+index = hash & (capacity - 1);  // Bitwise AND
 
-**Q: What happens if `equals()` but not `hashCode()` is overridden?**
+// Instead of:
+index = hash % capacity;        // Modulo (slower)
 
-Objects may be equal but placed in different buckets. `contains()` and `get()` fail.
+// Example: capacity = 16
+hash & 15  ==  hash & 0b1111  ==  hash % 16
+```
+
+### Q: What if equals() but not hashCode() is overridden?
+
+```java
+class BadKey {
+    int id;
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof BadKey && ((BadKey)o).id == this.id;
+    }
+    // hashCode() NOT overridden!
+}
+
+HashMap<BadKey, String> map = new HashMap<>();
+map.put(new BadKey(1), "one");
+map.get(new BadKey(1));  // null! 💥
+
+// Why? new BadKey(1) has DIFFERENT hashCode → different bucket!
+```
+
+**Rule**: If you override `equals()`, you MUST override `hashCode()`!

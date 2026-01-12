@@ -52,7 +52,67 @@ System.out.print(x);   // Prints without newline
 
 ---
 
-## 3. Arrays (Fixed Size)
+## 3. Loops
+
+**C++**
+
+```cpp
+// Standard for loop
+for (int i = 0; i < n; i++) { }
+
+// While loop
+while (condition) { }
+
+// Range-based for (C++11)
+for (int x : arr) { }          // By value (copy)
+for (int& x : arr) { x++; }    // By reference (modifiable)
+
+// Iterator
+for (auto it = v.begin(); it != v.end(); it++) {
+    cout << *it;
+}
+```
+
+**Java**
+
+```java
+// Standard for loop (same as C++)
+for (int i = 0; i < n; i++) { }
+
+// While loop (same as C++)
+while (condition) { }
+
+// Enhanced for-each (similar to range-based)
+for (int x : arr) { }          // Arrays
+for (int x : list) { }         // Any Iterable (ArrayList, HashSet, etc.)
+// Note: Cannot modify the collection during iteration (no reference semantics)
+
+// Iterator (useful when you need to remove elements)
+Iterator<Integer> it = list.iterator();
+while (it.hasNext()) {
+    int val = it.next();
+    if (val == target) {
+        it.remove(); // Safe removal during iteration
+    }
+}
+
+// Indexed loop over ArrayList (when you need index)
+for (int i = 0; i < list.size(); i++) {
+    int val = list.get(i);
+}
+```
+
+### Key Differences
+
+| C++ | Java |
+|-----|------|
+| `for (int& x : v)` modifies original | Enhanced for-each **cannot** modify collection |
+| `v.erase(it)` invalidates iterator | `it.remove()` is safe during iteration |
+| Range: `begin()`, `end()` | Range: `iterator()`, `hasNext()`, `next()` |
+
+---
+
+## 4. Arrays (Fixed Size)
 
 **C++**
 
@@ -73,7 +133,7 @@ int n = arr.length; // Property, not a method
 
 ---
 
-## 4. Vectors vs ArrayList (Dynamic Arrays)
+## 5. Vectors vs ArrayList (Dynamic Arrays)
 
 **C++**
 
@@ -100,7 +160,7 @@ int size = v.size();
 
 ---
 
-## 5. Strings
+## 6. Strings
 
 **C++**
 
@@ -134,7 +194,7 @@ String result = sb.toString();
 
 ---
 
-## 6. Hash Maps
+## 7. Hash Maps
 
 **C++ (`unordered_map`)**
 
@@ -165,7 +225,7 @@ for (Map.Entry<String, Integer> entry : map.entrySet()) {
 
 ---
 
-## 7. Hash Sets
+## 8. Hash Sets
 
 **C++ (`unordered_set`)**
 
@@ -186,7 +246,7 @@ st.remove(10);
 
 ---
 
-## 8. Stack & Queue
+## 9. Stack & Queue
 
 **C++**
 
@@ -218,7 +278,7 @@ q.poll();   // Remove front (safer than remove())
 
 ---
 
-## 9. Priority Queue (Heap)
+## 10. Priority Queue (Heap)
 
 **C++**
 
@@ -248,7 +308,7 @@ PriorityQueue<Integer> maxPq = new PriorityQueue<>(Collections.reverseOrder());
 
 ---
 
-## 10. Sorting
+## 11. Sorting
 
 **C++**
 
@@ -274,7 +334,7 @@ Collections.sort(list, (a, b) -> b - a); // Descending
 Arrays.sort(intervals, (a, b) -> a[0] - b[0]); // Sort by first element
 ```
 
-## 11. Pairs
+## 12. Pairs
 
 C++ `pair<int,int>` is common. Java simple alternative:
 
@@ -289,7 +349,7 @@ class Pair {
 }
 ```
 
-## 12. Common Limits
+## 13. Common Limits
 
 **C++**
 `INT_MAX`, `INT_MIN`
@@ -299,7 +359,7 @@ class Pair {
 
 ---
 
-## 13. Recursion & Passing State
+## 14. Recursion & Passing State
 
 **C++**
 
@@ -342,7 +402,7 @@ void solve(int n, int[] ans) {
 
 ---
 
-## 14. Top-Down DP (Memoization)
+## 15. Top-Down DP (Memoization)
 
 **C++**
 

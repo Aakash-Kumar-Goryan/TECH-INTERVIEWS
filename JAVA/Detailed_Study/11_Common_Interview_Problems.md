@@ -1,70 +1,102 @@
 # Common Java Interview Problems
 
-Coding problems that test Java-specific knowledge.
+> *These are the classic Java coding problems that test your language mastery. Let's solve them step by step...*
 
-## 1. LRU Cache Implementation
+---
 
-Using `LinkedHashMap` with access order.
+## 🎬 The Problem-Solving Journey
+
+These aren't just coding problems - they're opportunities to show you understand Java deeply. Let's tackle them!
+
+---
+
+## 📖 Problem 1: LRU Cache
+
+**The Interview Question**: "Implement a cache that evicts the least recently used item when full."
+
+### The Quick Solution (LinkedHashMap)
 
 ```java
 public class LRUCache<K, V> extends LinkedHashMap<K, V> {
     private final int capacity;
     
     public LRUCache(int capacity) {
-        super(capacity, 0.75f, true);  // true = access order
+        // true = access order (not insertion order!)
+        super(capacity, 0.75f, true);
         this.capacity = capacity;
     }
     
     @Override
     protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-        return size() > capacity;
+        return size() > capacity;  // Auto-evict when over capacity!
     }
 }
 
 // Usage
 LRUCache<Integer, String> cache = new LRUCache<>(3);
-cache.put(1, "one");
-cache.put(2, "two");
-cache.put(3, "three");
-cache.get(1);         // Access 1, moves to end
-cache.put(4, "four"); // Evicts 2 (least recently used)
+cache.put(1, "one");   // [1]
+cache.put(2, "two");   // [1, 2]
+cache.put(3, "three"); // [1, 2, 3]
+cache.get(1);          // Access 1, moves to end: [2, 3, 1]
+cache.put(4, "four");  // Over capacity! Evict 2: [3, 1, 4]
 ```
 
-### Custom Implementation (No LinkedHashMap)
+### The "Show Me You Understand" Solution (Custom)
 
 ```java
 public class LRUCache<K, V> {
     private final int capacity;
-    private final Map<K, Node<K, V>> map;
-    private final DoublyLinkedList<K, V> list;
+    private final Map<K, Node<K, V>> map = new HashMap<>();
+    private final Node<K, V> head = new Node<>(null, null);  // Dummy head
+    private final Node<K, V> tail = new Node<>(null, null);  // Dummy tail
     
     public LRUCache(int capacity) {
         this.capacity = capacity;
-        this.map = new HashMap<>();
-        this.list = new DoublyLinkedList<>();
+        head.next = tail;
+        tail.prev = head;
     }
     
     public V get(K key) {
-        if (!map.containsKey(key)) return null;
         Node<K, V> node = map.get(key);
-        list.moveToHead(node);
+        if (node == null) return null;
+        
+        moveToHead(node);  // Mark as recently used
         return node.value;
     }
     
     public void put(K key, V value) {
-        if (map.containsKey(key)) {
-            Node<K, V> node = map.get(key);
+        Node<K, V> node = map.get(key);
+        
+        if (node != null) {
             node.value = value;
-            list.moveToHead(node);
+            moveToHead(node);
         } else {
             if (map.size() >= capacity) {
-                Node<K, V> tail = list.removeTail();
-                map.remove(tail.key);
+                Node<K, V> lru = tail.prev;  // LRU is before tail
+                remove(lru);
+                map.remove(lru.key);
             }
-            Node<K, V> node = new Node<>(key, value);
-            list.addToHead(node);
-            map.put(key, node);
+            Node<K, V> newNode = new Node<>(key, value);
+            addToHead(newNode);
+            map.put(key, newNode);
         }
+    }
+    
+    private void moveToHead(Node<K, V> node) {
+        remove(node);
+        addToHead(node);
+    }
+    
+    private void remove(Node<K, V> node) {
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+    }
+    
+    private void addToHead(Node<K, V> node) {
+        node.next = head.next;
+        node.prev = head;
+        head.next.prev = node;
+        head.next = node;
     }
     
     private static class Node<K, V> {
@@ -77,127 +109,107 @@ public class LRUCache<K, V> {
             this.value = value;
         }
     }
-    
-    private static class DoublyLinkedList<K, V> {
-        private Node<K, V> head, tail;
-        
-        DoublyLinkedList() {
-            head = new Node<>(null, null);
-            tail = new Node<>(null, null);
-            head.next = tail;
-            tail.prev = head;
-        }
-        
-        void addToHead(Node<K, V> node) {
-            node.next = head.next;
-            node.prev = head;
-            head.next.prev = node;
-            head.next = node;
-        }
-        
-        void remove(Node<K, V> node) {
-            node.prev.next = node.next;
-            node.next.prev = node.prev;
-        }
-        
-        void moveToHead(Node<K, V> node) {
-            remove(node);
-            addToHead(node);
-        }
-        
-        Node<K, V> removeTail() {
-            Node<K, V> node = tail.prev;
-            remove(node);
-            return node;
-        }
-    }
 }
+```
+
+**Why HashMap + Doubly Linked List?**
+
+```
+HashMap: O(1) lookup by key
+DLL: O(1) move to head / remove from tail
+
+Together: O(1) get and put! 🚀
 ```
 
 ---
 
-## 2. Producer-Consumer with BlockingQueue
+## 📖 Problem 2: Producer-Consumer
+
+**The Interview Question**: "Implement thread-safe producer-consumer."
+
+### The Easy Way (BlockingQueue)
 
 ```java
-public class ProducerConsumer {
-    private final BlockingQueue<Integer> queue;
+public class ProducerConsumer<T> {
+    private final BlockingQueue<T> queue;
     
     public ProducerConsumer(int capacity) {
         this.queue = new ArrayBlockingQueue<>(capacity);
     }
     
-    public void produce(int item) throws InterruptedException {
-        queue.put(item);  // Blocks if full
+    public void produce(T item) throws InterruptedException {
+        queue.put(item);  // Blocks if full! ✋
         System.out.println("Produced: " + item);
     }
     
-    public int consume() throws InterruptedException {
-        int item = queue.take();  // Blocks if empty
+    public T consume() throws InterruptedException {
+        T item = queue.take();  // Blocks if empty! ✋
         System.out.println("Consumed: " + item);
         return item;
     }
 }
 
 // Usage
-ProducerConsumer pc = new ProducerConsumer(10);
+ProducerConsumer<Integer> pc = new ProducerConsumer<>(10);
 
-// Producer thread
-new Thread(() -> {
+Thread producer = new Thread(() -> {
     for (int i = 0; i < 100; i++) {
-        try {
-            pc.produce(i);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        try { pc.produce(i); } catch (InterruptedException e) { break; }
     }
-}).start();
+});
 
-// Consumer thread
-new Thread(() -> {
+Thread consumer = new Thread(() -> {
     while (true) {
-        try {
-            pc.consume();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            break;
-        }
+        try { pc.consume(); } catch (InterruptedException e) { break; }
     }
-}).start();
+});
+
+producer.start();
+consumer.start();
 ```
 
-### Using wait/notify (Manual)
+### The "Prove You Know wait/notify" Way
 
 ```java
-public class ProducerConsumer {
-    private final Queue<Integer> queue = new LinkedList<>();
+public class ProducerConsumer<T> {
+    private final Queue<T> queue = new LinkedList<>();
     private final int capacity;
     
     public ProducerConsumer(int capacity) {
         this.capacity = capacity;
     }
     
-    public synchronized void produce(int item) throws InterruptedException {
+    public synchronized void produce(T item) throws InterruptedException {
         while (queue.size() == capacity) {
-            wait();  // Wait until space available
+            wait();  // Full! Wait for consumer
         }
         queue.offer(item);
-        notifyAll();  // Wake consumers
+        notifyAll();  // Wake waiting consumers!
     }
     
-    public synchronized int consume() throws InterruptedException {
+    public synchronized T consume() throws InterruptedException {
         while (queue.isEmpty()) {
-            wait();  // Wait until items available
+            wait();  // Empty! Wait for producer
         }
-        int item = queue.poll();
-        notifyAll();  // Wake producers
+        T item = queue.poll();
+        notifyAll();  // Wake waiting producers!
         return item;
     }
 }
 ```
 
+**Why `while` not `if`?**
+
+```
+Spurious wakeups! Thread can wake up without notify.
+Always re-check the condition after waking.
+```
+
 ---
 
-## 3. Custom HashMap Implementation
+## 📖 Problem 3: Custom HashMap
+
+**The Interview Question**: "Implement HashMap from scratch."
 
 ```java
 public class MyHashMap<K, V> {
@@ -213,21 +225,22 @@ public class MyHashMap<K, V> {
     }
     
     public void put(K key, V value) {
+        // Resize if needed
         if (size >= buckets.length * LOAD_FACTOR) {
             resize();
         }
         
         int index = getIndex(key);
-        Node<K, V> node = buckets[index];
         
-        while (node != null) {
+        // Check if key exists
+        for (Node<K, V> node = buckets[index]; node != null; node = node.next) {
             if (keyEquals(node.key, key)) {
-                node.value = value;
+                node.value = value;  // Update existing
                 return;
             }
-            node = node.next;
         }
         
+        // Add new node at head of chain
         Node<K, V> newNode = new Node<>(key, value);
         newNode.next = buckets[index];
         buckets[index] = newNode;
@@ -236,13 +249,10 @@ public class MyHashMap<K, V> {
     
     public V get(K key) {
         int index = getIndex(key);
-        Node<K, V> node = buckets[index];
-        
-        while (node != null) {
+        for (Node<K, V> node = buckets[index]; node != null; node = node.next) {
             if (keyEquals(node.key, key)) {
                 return node.value;
             }
-            node = node.next;
         }
         return null;
     }
@@ -269,13 +279,11 @@ public class MyHashMap<K, V> {
     }
     
     private int getIndex(K key) {
-        if (key == null) return 0;
-        return Math.abs(key.hashCode() % buckets.length);
+        return key == null ? 0 : Math.abs(key.hashCode() % buckets.length);
     }
     
     private boolean keyEquals(K k1, K k2) {
-        if (k1 == null) return k2 == null;
-        return k1.equals(k2);
+        return k1 == null ? k2 == null : k1.equals(k2);
     }
     
     @SuppressWarnings("unchecked")
@@ -284,10 +292,9 @@ public class MyHashMap<K, V> {
         buckets = new Node[oldBuckets.length * 2];
         size = 0;
         
-        for (Node<K, V> node : oldBuckets) {
-            while (node != null) {
+        for (Node<K, V> bucket : oldBuckets) {
+            for (Node<K, V> node = bucket; node != null; node = node.next) {
                 put(node.key, node.value);
-                node = node.next;
             }
         }
     }
@@ -307,20 +314,22 @@ public class MyHashMap<K, V> {
 
 ---
 
-## 4. Thread-Safe Singleton Patterns
+## 📖 Problem 4: Thread-Safe Singleton
 
-### Double-Checked Locking
+**The Interview Question**: "Implement a thread-safe singleton, explain the approaches."
+
+### Approach 1: Double-Checked Locking
 
 ```java
 public class Singleton {
-    private static volatile Singleton instance;
+    private static volatile Singleton instance;  // volatile is CRITICAL!
     
     private Singleton() { }
     
     public static Singleton getInstance() {
-        if (instance == null) {                 // First check (no lock)
+        if (instance == null) {                    // 1st check: avoid locking if exists
             synchronized (Singleton.class) {
-                if (instance == null) {         // Second check (with lock)
+                if (instance == null) {            // 2nd check: after acquiring lock
                     instance = new Singleton();
                 }
             }
@@ -328,329 +337,299 @@ public class Singleton {
         return instance;
     }
 }
+
+// Why volatile?
+// Without it, another thread might see partially constructed object!
+// instance = new Singleton() is actually:
+//   1. Allocate memory
+//   2. Initialize object
+//   3. Assign to variable
+// CPU might reorder 2 and 3! 💥
 ```
 
-**Why volatile?** Prevents instruction reordering during object creation.
-
-### Bill Pugh (Initialize-On-Demand)
+### Approach 2: Bill Pugh (Recommended)
 
 ```java
 public class Singleton {
     private Singleton() { }
     
     private static class Holder {
-        private static final Singleton INSTANCE = new Singleton();
+        static final Singleton INSTANCE = new Singleton();
     }
     
     public static Singleton getInstance() {
         return Holder.INSTANCE;
     }
 }
+
+// Why it works:
+// Inner class is loaded ONLY when getInstance() is called
+// Class loading is thread-safe by JVM spec!
 ```
 
-**Why it works**: Inner class loaded only when `getInstance()` called.
-
-### Enum Singleton (Best)
+### Approach 3: Enum (Best!)
 
 ```java
 public enum Singleton {
     INSTANCE;
     
-    private int value;
-    
-    public int getValue() { return value; }
-    public void setValue(int value) { this.value = value; }
+    // Add your methods
+    public void doSomething() { }
 }
 
 // Usage
-Singleton.INSTANCE.setValue(42);
+Singleton.INSTANCE.doSomething();
+
+// Why best:
+// ✅ Thread-safe (JVM guarantees)
+// ✅ Serialization-safe (can't create via deserialization)
+// ✅ Reflection-safe (can't create via reflection)
 ```
 
 ---
 
-## 5. Immutable Class
+## 📖 Problem 5: Immutable Class
+
+**The Interview Question**: "Make this class immutable."
 
 ```java
-public final class ImmutablePerson {
-    private final String name;
-    private final int age;
+public final class ImmutablePerson {            // 1. Class is final
+    private final String name;                   // 2. Fields are final
+    private final Date birthDate;                // 3. Handle mutable fields!
     private final List<String> hobbies;
     
-    public ImmutablePerson(String name, int age, List<String> hobbies) {
+    public ImmutablePerson(String name, Date birthDate, List<String> hobbies) {
         this.name = name;
-        this.age = age;
-        this.hobbies = new ArrayList<>(hobbies);  // Defensive copy
+        this.birthDate = new Date(birthDate.getTime());     // 4. Defensive copy IN
+        this.hobbies = new ArrayList<>(hobbies);            // 4. Defensive copy IN
     }
     
-    public String getName() { return name; }
-    public int getAge() { return age; }
+    public String getName() {
+        return name;  // String is immutable, safe
+    }
+    
+    public Date getBirthDate() {
+        return new Date(birthDate.getTime());               // 5. Defensive copy OUT
+    }
     
     public List<String> getHobbies() {
-        return Collections.unmodifiableList(hobbies);  // Return immutable
+        return Collections.unmodifiableList(hobbies);       // 5. Unmodifiable view
     }
-}
-```
-
-**Rules for Immutability**:
-
-1. Make class `final`
-2. Make all fields `private final`
-3. No setters
-4. Defensive copy in constructor (for mutable objects)
-5. Return immutable views of mutable fields
-
----
-
-## 6. Deep Copy vs Shallow Copy
-
-### Shallow Copy
-
-```java
-class Person implements Cloneable {
-    String name;
-    Address address;
     
-    @Override
-    protected Person clone() throws CloneNotSupportedException {
-        return (Person) super.clone();  // Copies references, not objects
-    }
+    // 6. No setters!
 }
 
-Person p1 = new Person();
-Person p2 = p1.clone();
-p1.address == p2.address;  // true (same object)
-```
-
-### Deep Copy
-
-```java
-class Person implements Cloneable {
-    String name;
-    Address address;
-    
-    @Override
-    protected Person clone() throws CloneNotSupportedException {
-        Person cloned = (Person) super.clone();
-        cloned.address = this.address.clone();  // Clone nested objects
-        return cloned;
-    }
-}
-
-Person p1 = new Person();
-Person p2 = p1.clone();
-p1.address == p2.address;  // false (different objects)
-```
-
-### Using Serialization
-
-```java
-public static <T extends Serializable> T deepCopy(T object) {
-    try {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(bos);
-        oos.writeObject(object);
-        
-        ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
-        ObjectInputStream ois = new ObjectInputStream(bis);
-        return (T) ois.readObject();
-    } catch (Exception e) {
-        throw new RuntimeException(e);
-    }
-}
+// The Rules:
+// 1. Make class final (prevent subclass from adding mutability)
+// 2. Make all fields private final
+// 3. No setters
+// 4. Defensive copy mutable objects IN (constructor)
+// 5. Defensive copy or unmodifiable view OUT (getters)
+// 6. Don't leak 'this' during construction
 ```
 
 ---
 
-## 7. equals() and hashCode() Contract
+## 📖 Problem 6: Deadlock Example & Prevention
+
+**The Interview Question**: "Show me a deadlock, then fix it."
+
+### Creating a Deadlock
 
 ```java
-public class Person {
-    private String name;
-    private int age;
-    
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;  // Same reference
-        if (o == null || getClass() != o.getClass()) return false;
-        Person person = (Person) o;
-        return age == person.age && Objects.equals(name, person.name);
-    }
-    
-    @Override
-    public int hashCode() {
-        return Objects.hash(name, age);  // Use same fields as equals
-    }
-}
-```
+Object lockA = new Object();
+Object lockB = new Object();
 
-**Contract Rules**:
-
-1. If `a.equals(b)` then `a.hashCode() == b.hashCode()`
-2. If hashCodes differ, objects are definitely not equal
-3. Equal hashCodes don't guarantee equality (collision)
-
----
-
-## 8. Deadlock Example and Prevention
-
-### Creating Deadlock
-
-```java
-Object lock1 = new Object();
-Object lock2 = new Object();
-
-// Thread 1
-new Thread(() -> {
-    synchronized (lock1) {
-        Thread.sleep(100);  // Ensure both threads lock first lock
-        synchronized (lock2) {
-            System.out.println("Thread 1");
+// Thread 1: Locks A, then wants B
+Thread t1 = new Thread(() -> {
+    synchronized (lockA) {
+        System.out.println("T1: Got A");
+        sleep(100);  // Give T2 time to lock B
+        synchronized (lockB) {
+            System.out.println("T1: Got B");  // Never happens!
         }
     }
-}).start();
+});
 
-// Thread 2
-new Thread(() -> {
-    synchronized (lock2) {  // Opposite order!
-        Thread.sleep(100);
-        synchronized (lock1) {
-            System.out.println("Thread 2");
+// Thread 2: Locks B, then wants A
+Thread t2 = new Thread(() -> {
+    synchronized (lockB) {
+        System.out.println("T2: Got B");
+        sleep(100);  // Give T1 time to lock A
+        synchronized (lockA) {
+            System.out.println("T2: Got A");  // Never happens!
         }
     }
-}).start();
+});
+
+// Result: DEADLOCK!
+// T1: Got A
+// T2: Got B
+// ... forever waiting ...
 ```
 
 ### Prevention: Consistent Lock Ordering
 
 ```java
-Object lock1 = new Object();
-Object lock2 = new Object();
-
-// Both threads acquire locks in same order
-void safeMethod() {
-    synchronized (lock1) {
-        synchronized (lock2) {
+// ALWAYS acquire locks in same order!
+Thread t1 = new Thread(() -> {
+    synchronized (lockA) {       // Always A first
+        synchronized (lockB) {   // Then B
             // Work
         }
     }
-}
+});
+
+Thread t2 = new Thread(() -> {
+    synchronized (lockA) {       // Always A first (same as T1!)
+        synchronized (lockB) {   // Then B
+            // Work
+        }
+    }
+});
 ```
 
-### Prevention: Using tryLock
+### Prevention: tryLock with Timeout
 
 ```java
-ReentrantLock lock1 = new ReentrantLock();
-ReentrantLock lock2 = new ReentrantLock();
+ReentrantLock lockA = new ReentrantLock();
+ReentrantLock lockB = new ReentrantLock();
 
-void safeLock() {
+void safeWork() throws InterruptedException {
     while (true) {
-        if (lock1.tryLock()) {
+        if (lockA.tryLock(50, TimeUnit.MILLISECONDS)) {
             try {
-                if (lock2.tryLock()) {
+                if (lockB.tryLock(50, TimeUnit.MILLISECONDS)) {
                     try {
-                        // Work
+                        // Work with both locks
                         return;
                     } finally {
-                        lock2.unlock();
+                        lockB.unlock();
                     }
                 }
             } finally {
-                lock1.unlock();
+                lockA.unlock();
             }
         }
-        Thread.sleep(10);  // Back off, retry
+        // Failed to get both, back off and retry
+        Thread.sleep(10);
     }
 }
 ```
 
 ---
 
-## 9. Print Numbers Using Multiple Threads
+## 📖 Problem 7: equals() and hashCode() Contract
 
-Print 1-10 using 3 threads (T1 prints 1,4,7,10; T2 prints 2,5,8; T3 prints 3,6,9).
+**The Interview Question**: "Implement equals and hashCode correctly."
 
 ```java
-public class PrintNumbers {
-    private int current = 1;
-    private final int max = 10;
-    private final Object lock = new Object();
+public class Person {
+    private String name;
+    private int age;
+    private String email;
     
-    public void print(int threadId, int numThreads) {
-        while (true) {
-            synchronized (lock) {
-                while (current <= max && current % numThreads != threadId % numThreads) {
-                    try {
-                        lock.wait();
-                    } catch (InterruptedException e) {
-                        return;
-                    }
-                }
-                
-                if (current > max) {
-                    lock.notifyAll();
-                    return;
-                }
-                
-                System.out.println("Thread-" + threadId + ": " + current);
-                current++;
-                lock.notifyAll();
-            }
-        }
+    @Override
+    public boolean equals(Object o) {
+        // 1. Same reference?
+        if (this == o) return true;
+        
+        // 2. Null or different class?
+        if (o == null || getClass() != o.getClass()) return false;
+        
+        // 3. Compare fields
+        Person person = (Person) o;
+        return age == person.age 
+            && Objects.equals(name, person.name)
+            && Objects.equals(email, person.email);
     }
     
-    public static void main(String[] args) {
-        PrintNumbers pn = new PrintNumbers();
-        
-        new Thread(() -> pn.print(1, 3)).start();
-        new Thread(() -> pn.print(2, 3)).start();
-        new Thread(() -> pn.print(3, 3)).start();
+    @Override
+    public int hashCode() {
+        // Use SAME fields as equals!
+        return Objects.hash(name, age, email);
     }
 }
 ```
 
+**The Contract:**
+
+```
+1. If a.equals(b) == true  →  a.hashCode() == b.hashCode() (MUST)
+2. If hashCode differs     →  Objects are definitely not equal
+3. If hashCode same        →  Objects MIGHT be equal (check with equals)
+
+Breaking the contract breaks HashMap!
+```
+
 ---
 
-## 10. Rate Limiter
+## 📖 Problem 8: Rate Limiter (Token Bucket)
 
-Token Bucket implementation:
+**The Interview Question**: "Implement a rate limiter that allows N requests per second."
 
 ```java
 public class RateLimiter {
-    private final int maxTokens;
-    private final long refillIntervalMs;
-    private double tokens;
+    private final int maxTokens;         // Max requests
+    private final long refillPeriodMs;   // Period to refill all tokens
+    private double availableTokens;
     private long lastRefillTime;
     
-    public RateLimiter(int maxTokens, long refillIntervalMs) {
+    public RateLimiter(int maxTokens, long refillPeriodMs) {
         this.maxTokens = maxTokens;
-        this.refillIntervalMs = refillIntervalMs;
-        this.tokens = maxTokens;
+        this.refillPeriodMs = refillPeriodMs;
+        this.availableTokens = maxTokens;
         this.lastRefillTime = System.currentTimeMillis();
     }
     
     public synchronized boolean tryAcquire() {
         refill();
-        if (tokens >= 1) {
-            tokens--;
-            return true;
+        
+        if (availableTokens >= 1) {
+            availableTokens--;
+            return true;   // Request allowed ✅
         }
-        return false;
+        return false;      // Rate limited ❌
     }
     
     private void refill() {
         long now = System.currentTimeMillis();
         long elapsed = now - lastRefillTime;
-        double tokensToAdd = elapsed * maxTokens / (double) refillIntervalMs;
-        tokens = Math.min(maxTokens, tokens + tokensToAdd);
+        
+        // Add tokens proportional to time elapsed
+        double tokensToAdd = (elapsed * maxTokens) / (double) refillPeriodMs;
+        availableTokens = Math.min(maxTokens, availableTokens + tokensToAdd);
         lastRefillTime = now;
     }
 }
 
-// Usage: Allow 10 requests per second
+// Usage: 10 requests per second
 RateLimiter limiter = new RateLimiter(10, 1000);
-if (limiter.tryAcquire()) {
-    processRequest();
-} else {
-    reject();
+
+void handleRequest(Request req) {
+    if (limiter.tryAcquire()) {
+        process(req);
+    } else {
+        reject(req, "Rate limited!");
+    }
 }
+```
+
+---
+
+## 🎯 Quick Reference: Problem → Data Structure
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Problem                    │  Data Structure / Technique               │
+├─────────────────────────────────────────────────────────────────────────┤
+│  LRU Cache                  │  HashMap + Doubly Linked List             │
+│  Producer-Consumer          │  BlockingQueue or wait/notify             │
+│  Custom HashMap             │  Array + Linked List chains               │
+│  Thread-safe Singleton      │  Enum or Double-check or Bill Pugh        │
+│  Immutable Class            │  final, defensive copies, no setters      │
+│  Deadlock                   │  Consistent lock ordering, tryLock        │
+│  Rate Limiter               │  Token Bucket algorithm                   │
+│  Print 1-N with K threads   │  wait/notify with modulo condition        │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
