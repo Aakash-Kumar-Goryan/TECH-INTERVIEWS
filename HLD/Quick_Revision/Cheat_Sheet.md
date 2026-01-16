@@ -93,3 +93,35 @@
 - Versioning (`/v1/users`).
 - Pagination (`?limit=10&offset=50` or Cursor-based).
 - Use standard HTTP codes.
+
+## 6. Distributed Locking Quick Reference
+
+| Approach | Consistency | Speed | Use Case |
+|----------|-------------|-------|----------|
+| **Redis SETNX** | Best-effort | Fast | Efficiency (avoid duplicate work) |
+| **Redlock** | Best-effort (majority) | Fast | Higher availability |
+| **ZooKeeper** | Strong (ZAB) | Medium | Correctness critical |
+| **etcd** | Strong (Raft) | Medium | Kubernetes-native |
+
+**Key Point**: Always use **fencing tokens** if correctness matters (prevents stale lock writes).
+
+## 7. Cache Stampede Solutions
+
+| Solution | How It Works |
+|----------|--------------|
+| **Locking** | Only one request fetches from DB |
+| **Singleflight** | Coalesce concurrent requests |
+| **Early refresh** | Probabilistically refresh before expiry |
+| **Background refresh** | Never expire, refresh in background |
+
+**Hot Key Fix**: L1 local cache + replicate key across shards.
+
+## 8. Event Sourcing vs State-Based
+
+| Aspect | State-Based | Event Sourcing |
+|--------|-------------|----------------|
+| Stores | Current state | All events |
+| History | Lost | Complete audit trail |
+| Best for | Simple CRUD | Audit, complex domain, temporal queries |
+
+**CQRS**: Separate read/write models for independent scaling.

@@ -74,6 +74,8 @@ This syllabus outlines the structure of the HLD Detailed Study materials, catego
   * `02_Distributed_ID_Generators.md`
   * `02_Message_Queues_Event_Streaming.md`
   * `04_Scalability_Patterns_Intro.md`
+  * `05_Distributed_Locking.md` ⭐ *NEW*
+  * `05_Distributed_Caching.md` ⭐ *NEW*
 
 ---
 
@@ -96,6 +98,7 @@ This syllabus outlines the structure of the HLD Detailed Study materials, catego
   * `03_Storage_Basics.md`
   * `03_Sharding_and_Partitioning.md`
   * `03_Data_Pipelines.md`
+  * `03_Event_Sourcing_CQRS.md` ⭐ *NEW*
 
 ---
 
