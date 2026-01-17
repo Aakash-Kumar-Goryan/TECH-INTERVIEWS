@@ -83,8 +83,10 @@ int slidingWindow(vector<int>& nums) {
     }
     return ans;
 }
+```
 
 ### QuickSelect (Kth Smallest Element)
+
 ```cpp
 // Returns the k-th smallest element (0-indexed: k=0 is min)
 // Average: O(N), Worst: O(N^2)
@@ -107,8 +109,6 @@ int quickSelect(vector<int>& nums, int k) {
     }
     return -1;
 }
-```
-
 ```
 
 ---
@@ -153,8 +153,10 @@ void levelOrder(TreeNode* root) {
     }
     return;
 }
+```
 
 ### LCA (Lowest Common Ancestor)
+
 ```cpp
 TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
     if (!root || root == p || root == q) return root;
@@ -165,8 +167,6 @@ TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
     if (left && right) return root; // Found one in each subtree
     return left ? left : right;     // Both in one subtree (or neither found)
 }
-```
-
 ```
 
 ---
