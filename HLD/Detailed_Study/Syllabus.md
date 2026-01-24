@@ -151,6 +151,7 @@ This syllabus outlines the structure of the HLD Detailed Study materials, catego
   * **Rate Limiter**: Token Bucket, Leaky Bucket algorithms, Distributed counting.
   * **Search Engine**: Inverted index, BM25 ranking, Distributed search.
   * **Notification System**: Multi-channel delivery, Priority queues, Delivery guarantees.
+  * **Hotel Availability Sync**: Race conditions, Optimistic locking, Channel Manager, OTA consistency.
 * **Relevant Files**:
   * `09_Case_Studies_Overview.md`
   * `09_Design_1_URL_Shortener.md`
@@ -163,6 +164,7 @@ This syllabus outlines the structure of the HLD Detailed Study materials, catego
   * `09_Design_8_Rate_Limiter_System.md` ⭐ *EXPANDED*
   * `09_Design_9_Search_Engine.md` ⭐ *NEW*
   * `09_Design_10_Notification_System.md` ⭐ *NEW*
+  * `09_Design_11_Hotel_Availability_Sync.md` ⭐ *NEW*
 
 ---
 
@@ -189,6 +191,22 @@ This syllabus outlines the structure of the HLD Detailed Study materials, catego
 
 ---
 
+## Module 8: Templates & Reusable Frameworks ⭐ *NEW*
+
+**Overview**: Ready-to-use templates for structuring interview answers and ensuring operational completeness.
+
+* **Components**:
+  * Interview scoring rubric (L4 vs L5 expectations)
+  * Self-assessment checklist
+  * SLO definition templates
+  * Observability and alerting frameworks
+  * Incident response templates
+* **Relevant Files (Templates/)**:
+  * `Design_Interview_Rubric.md` ⭐ *NEW* - Scoring guide with L4/L5 criteria
+  * `SLOs_Observability_Template.md` ⭐ *NEW* - Metrics, alerting, dashboards
+
+---
+
 ## Summary of Updates (Google L5 Enhancement)
 
 ### New Files Added
@@ -203,13 +221,24 @@ This syllabus outlines the structure of the HLD Detailed Study materials, catego
 | `Interview_Framework.md` | 7 | 6-step interview approach with timing |
 | `Common_Mistakes.md` | 7 | 14 common pitfalls and how to avoid |
 | `Google_Specific_Tips.md` | 7 | Google culture, L5 expectations, tech stack |
+| `09_Design_11_Hotel_Availability_Sync.md` | 6 | Race conditions, Locking, OTA Sync |
 
 ### Expanded Files
 
 | File | Changes |
 |------|---------|
+| `09_Design_1_URL_Shortener.md` | ⭐ **Full Model** - BOTE, SLOs, runbooks, threat model, diagrams, cost |
+| `09_Design_2_Uber.md` | ⭐ **Full Model** - BOTE, SLOs, runbooks, threat model, diagrams, cost |
+| `09_Design_3_WhatsApp.md` | ⭐ **Full Model** - BOTE, E2EE, runbooks, threat model, diagrams, cost |
+| `09_Design_4_Instagram.md` | ⭐ **Full Model** - BOTE, hybrid fan-out, threat model, diagrams, cost |
+| `09_Design_5_Youtube_Netflix.md` | ⭐ **Full Model** - BOTE, DRM, CDN, threat model, diagrams, cost |
+| `09_Design_6_Typeahead_Autocomplete.md` | ⭐ **Full Model** - BOTE, trie, trending, threat model, diagrams, cost |
+| `09_Design_7_Web_Crawler.md` | ⭐ **Full Model** - BOTE, frontier, politeness, threat model, diagrams, cost |
 | `09_Design_8_Rate_Limiter_System.md` | All 5 algorithms, Redis Lua scripts, multi-tier limiting, headers |
+| `09_Design_9_Search_Engine.md` | ⭐ **Full Model** - inverted index, BM25, threat model, diagrams, cost |
+| `09_Design_10_Notification_System.md` | ⭐ **Full Model** - multi-channel, priority, threat model, diagrams, cost |
 | `10_Practice_Questions_List.md` | 21 questions with difficulty levels, study order |
+| `11_Mock_Interview_QA_Bank.md` | ⭐ **NEW** - 50+ challenging follow-ups with model answers for all designs |
 
 ### Previous Updates (Still Relevant)
 

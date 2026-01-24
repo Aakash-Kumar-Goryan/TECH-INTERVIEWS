@@ -54,6 +54,10 @@ List of common system design questions to practice, categorized by their primary
     * *Core Tech*: Consistent hashing, Leader election, Distributed locks.
     * *Key Challenges*: Exactly-once execution, Handling worker failures, Job priority, Delayed/recurring jobs.
 
+4. **Design Hotel Channel Manager** 🟡 (Inventory Sync)
+    * *Core Tech*: RDBMS (Optimistic Locking), Kafka / RabbitMQ (Fan-out), Third-party API integration.
+    * *Key Challenges*: Race conditions (Double booking), Cross-platform consistency, API rate limiting, Fault tolerance (OTA downtime).
+
 ---
 
 ## Data Intensive & Geo-Spatial
@@ -166,6 +170,7 @@ List of common system design questions to practice, categorized by their primary
 | Google Maps | Geo-Spatial | 🔴 L5+ | Routing, tiles |
 | Gmail | Messaging | 🔴 L5+ | Search, spam |
 | Task Scheduler | Transactional | 🔴 L5+ | Exactly-once |
+| Channel Manager | Transactional | 🟡 L5 | Race conditions |
 | Metrics System | Infrastructure | 🔴 L5+ | Time-series |
 | Distributed FS | Infrastructure | 🔴 L5+ | Replication |
 | Ad Aggregation | Analytics | 🔴 L5+ | Real-time, fraud |
@@ -197,6 +202,7 @@ List of common system design questions to practice, categorized by their primary
 3. Search Engine
 4. Google Docs
 5. Task Scheduler
+6. Hotel Channel Manager
 
 ### Week 7+: Expert (🔴)
 

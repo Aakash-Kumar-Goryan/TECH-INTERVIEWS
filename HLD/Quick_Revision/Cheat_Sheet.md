@@ -105,7 +105,14 @@
 
 **Key Point**: Always use **fencing tokens** if correctness matters (prevents stale lock writes).
 
-## 7. Cache Stampede Solutions
+## 7. Optimistic vs Pessimistic Locking (Database)
+
+| Type | Mechanism | Use Case | Pros/Cons |
+|---|---|---|---|
+| **Pessimistic** | Lock row/table `SELECT ... FOR UPDATE` | High contention, Write-heavy | ✅ Prevents conflicts<br>❌ Deadlocks, Slow |
+| **Optimistic** | Version column `WHERE version = v` | Low contention, Read-heavy | ✅ High concurrency<br>❌ Retries needed on fail |
+
+## 8. Cache Stampede Solutions
 
 | Solution | How It Works |
 |----------|--------------|
@@ -116,7 +123,7 @@
 
 **Hot Key Fix**: L1 local cache + replicate key across shards.
 
-## 8. Event Sourcing vs State-Based
+## 9. Event Sourcing vs State-Based
 
 | Aspect | State-Based | Event Sourcing |
 |--------|-------------|----------------|

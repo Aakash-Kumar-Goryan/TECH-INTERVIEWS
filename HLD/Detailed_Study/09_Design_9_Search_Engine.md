@@ -1,5 +1,7 @@
 # Design a Search Engine (e.g., Google Search, Elasticsearch)
 
+> **Model Interview Answer** - This document demonstrates L4/L5 level depth with complete BOTE, SLOs, failure modes, and runbooks.
+
 ## 1. Requirements
 
 ### Functional
@@ -28,6 +30,52 @@
 | Storage | 100B × 10KB = 1 Exabyte |
 | Search QPS | 100,000+ QPS |
 | Indexing rate | 1 Million docs/hour |
+
+---
+
+## 2.1 SLOs & Operational Targets
+
+### Service Level Objectives
+
+| Service | SLI | Target | Error Budget |
+|---------|-----|--------|--------------|
+| **Search API** | Availability | 99.99% | 4.3 min/month |
+| **Search API** | p99 latency | < 200ms | - |
+| **Search API** | p50 latency | < 50ms | - |
+| **Indexing** | Freshness (news) | < 1 hour | - |
+| **Indexing** | Freshness (general) | < 24 hours | - |
+| **Shards** | Availability | 99.99% per shard | - |
+
+### Key Metrics to Monitor
+
+```yaml
+Query Path:
+  - search_requests_per_second
+  - search_latency_ms (p50, p99)
+  - query_success_rate
+  - results_returned_count (avg)
+
+Index:
+  - index_size_bytes{shard}
+  - documents_indexed_per_minute
+  - index_freshness_lag_seconds
+  - shard_replica_lag_bytes
+
+Cache:
+  - query_cache_hit_rate
+  - posting_list_cache_hit_rate
+  - cache_eviction_rate
+```
+
+### Alerting Thresholds
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| Search p99 > 500ms | 5 min window | P1 - Page |
+| Shard unavailable | Any primary | P1 - Page |
+| Index freshness > 2 hours | News content | P2 - Ticket |
+| Query cache hit rate < 80% | 15 min window | P2 - Ticket |
+| Empty results rate > 10% | 5 min window | P2 - Ticket |
 
 ---
 
@@ -320,22 +368,349 @@ If results for query < threshold:
 
 ---
 
-## 12. Interview Talking Points
+## 12. Failure Modes & Runbooks
 
-### Key Design Decisions
+### Failure Scenarios
 
-1. **Inverted Index**: Core data structure for O(1) term lookup
-2. **Document Sharding**: Preferred over term sharding for parallelism
-3. **BM25**: Industry standard ranking algorithm
-4. **Two-phase retrieval**: Fast candidate retrieval + ML re-ranking
+| Failure | Impact | Detection | Mitigation |
+|---------|--------|-----------|------------|
+| Shard primary down | Query latency spike, partial results | Health check, replica lag | Promote replica, rebalance |
+| Index corruption | Wrong/missing results | Checksum mismatch, anomaly | Rebuild from source docs |
+| Query latency spike | Poor user experience | p99 > threshold | Scale coordinators, check hot shards |
+| Indexing pipeline lag | Stale results | Freshness metric | Scale indexers, check bottlenecks |
+| Cache failure | Increased DB load | Cache hit rate drop | Enable degraded mode, scale DB |
 
-### Trade-offs to Mention
+### Runbook: High Query Latency
 
-| Trade-off | Options |
-|-----------|---------|
-| Freshness vs Indexing Cost | Real-time indexing vs Batch |
-| Precision vs Recall | Strict matching vs Fuzzy |
-| Latency vs Relevance | Simple BM25 vs Complex ML models |
+```markdown
+## Alert: Search p99 > 500ms (P1)
+
+### Symptoms
+- Users reporting slow search
+- Timeouts in search requests
+
+### Diagnosis Steps
+
+1. Check per-shard latency:
+   - Is one shard slow (hot shard)?
+   - All shards slow (systemic issue)?
+
+2. Check query patterns:
+   - Expensive queries (wildcards, long phrases)?
+   - Sudden traffic spike?
+
+3. Check index health:
+   - Segment count (too many = slow)
+   - Memory pressure (GC issues)
+
+### Mitigation
+
+1. **If hot shard**:
+   - Add replicas to that shard
+   - Re-shard if persistent imbalance
+
+2. **If query spike**:
+   - Enable query rate limiting
+   - Scale coordinator nodes
+
+3. **If index degradation**:
+   - Force segment merge
+   - Restart nodes if GC issues
+
+### Recovery
+- Latency should normalize within 5-10 min
+- Monitor for recurrence
+```
+
+### Runbook: Index Corruption
+
+```markdown
+## Alert: Checksum Mismatch / Missing Documents (P1)
+
+### Diagnosis
+
+1. Identify affected shards:
+   - Check replica consistency
+   - Compare document counts
+
+2. Determine scope:
+   - Partial corruption: Use replica
+   - Full corruption: Rebuild needed
+
+### Mitigation
+
+1. **If replica healthy**:
+   - Promote replica to primary
+   - Rebuild corrupted shard from replica
+
+2. **If all replicas corrupted**:
+   - Pause indexing to prevent spread
+   - Rebuild shard from source documents
+   - Re-index affected date range
+
+### Prevention
+- Enable checksum verification
+- Regular backup of index snapshots
+```
+
+### Degraded Mode
+
+```markdown
+## Graceful Degradation
+
+### Level 1: High Load
+- Reduce results per page (10 → 5)
+- Disable spell correction
+- Simplify ranking (BM25 only, skip ML re-rank)
+
+### Level 2: Partial Shard Failure
+- Return partial results from available shards
+- Show "Some results may be missing" banner
+- Prioritize primary replicas
+
+### Level 3: Severe Degradation
+- Serve from query cache only
+- Show cached popular results
+- Enable maintenance page for fresh queries
+
+### Level 4: Complete Outage
+- Static "Search unavailable" page
+- Redirect to alternative search (site map)
+```
+
+---
+
+## 13. Trade-offs Summary
+
+| Decision | Choice | Trade-off |
+|----------|--------|-----------|
+| **Sharding** | Document-based | Better parallelism, requires scatter-gather |
+| **Ranking** | BM25 + ML re-rank | Balance of speed and relevance |
+| **Freshness** | Near real-time indexing | Higher cost vs batch indexing |
+| **Replication** | 2-3 replicas per shard | Storage cost vs availability |
+| **Caching** | Query + posting list | Memory cost vs latency |
+
+---
+
+## 14. Security & Threat Model
+
+### Attack Vectors
+
+| Threat | Attack | Mitigation |
+|--------|--------|------------|
+| **Query Injection** | Malformed queries causing crashes | Query parser validation, sandboxing |
+| **SEO Spam** | Keyword stuffing, link farms | PageRank, spam detection ML, penalties |
+| **Click Fraud** | Fake clicks to boost ranking | Click fingerprinting, pattern detection |
+| **Scraping** | Automated result extraction | Rate limiting, CAPTCHAs, legal action |
+| **DoS** | Expensive queries to overload | Query complexity limits, timeout |
+| **Result Poisoning** | Inject malicious content | Content moderation, Safe Browsing |
+
+### Query Safety
+
+```yaml
+Query Sanitization:
+  - Escape special characters (AND, OR, NOT)
+  - Limit query length (1000 chars max)
+  - Limit term count (32 terms max)
+  - Block known malicious patterns
+
+Result Filtering:
+  - Safe Search (adult content filter)
+  - Malware site detection (Safe Browsing)
+  - Deceptive site warnings
+  - Legal removals (DMCA, right to be forgotten)
+```
+
+---
+
+## 15. Sequence Diagrams
+
+### Search Query Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as Search API
+    participant Coordinator
+    participant Shards as Index Shards (1-N)
+    participant Ranker as ML Ranker
+    participant Cache
+
+    User->>API: GET /search?q=distributed+systems
+    API->>Cache: Check query cache
+    
+    alt Cache Hit
+        Cache-->>API: Cached results
+        API-->>User: Search results
+    else Cache Miss
+        API->>Coordinator: Execute query
+        
+        par Parallel Shard Query
+            Coordinator->>Shards: Query shard 1
+            Coordinator->>Shards: Query shard 2
+            Coordinator->>Shards: Query shard N
+        end
+        
+        Shards-->>Coordinator: Top-K results + scores
+        Coordinator->>Coordinator: Merge results (priority queue)
+        Coordinator->>Ranker: Re-rank top 100
+        Ranker-->>Coordinator: ML-ranked results
+        
+        Coordinator->>Cache: Store results
+        Coordinator-->>API: Final results
+        API-->>User: Search results (paginated)
+    end
+```
+
+### Indexing Pipeline
+
+```mermaid
+sequenceDiagram
+    participant Crawler
+    participant Kafka
+    participant Indexer
+    participant Index as Inverted Index
+    participant Replica
+
+    Crawler->>Kafka: New/updated document
+    Kafka->>Indexer: Consume document
+    
+    Indexer->>Indexer: Parse HTML, extract text
+    Indexer->>Indexer: Tokenize, stem, normalize
+    Indexer->>Indexer: Compute TF, positions
+    
+    Indexer->>Index: Add to in-memory buffer
+    
+    alt Buffer full (every 1 min)
+        Index->>Index: Flush to new segment
+        Index->>Index: Background merge segments
+    end
+    
+    Index->>Replica: Replicate segment
+    Replica-->>Index: ACK
+```
+
+---
+
+## 16. Data Schema
+
+### Inverted Index Structure
+
+```
+# Term → Posting List
+index[term] = {
+  doc_freq: 100000,        # Number of docs containing term
+  postings: [
+    { doc_id: 1, tf: 5, positions: [0, 10, 25] },
+    { doc_id: 7, tf: 2, positions: [3, 50] },
+    ...
+  ]
+}
+
+# Forward Index (doc metadata)
+docs[doc_id] = {
+  url: "https://example.com/page1",
+  title: "...",
+  length: 1500,  # For BM25 length normalization
+  pagerank: 0.85,
+  indexed_at: 1642531200
+}
+```
+
+### Elasticsearch Mapping
+
+```json
+{
+  "mappings": {
+    "properties": {
+      "url": { "type": "keyword" },
+      "title": { "type": "text", "analyzer": "standard" },
+      "content": { "type": "text", "analyzer": "standard" },
+      "domain": { "type": "keyword" },
+      "pagerank": { "type": "float" },
+      "indexed_at": { "type": "date" },
+      "language": { "type": "keyword" }
+    }
+  },
+  "settings": {
+    "number_of_shards": 1000,
+    "number_of_replicas": 2
+  }
+}
+```
+
+---
+
+## 17. Cost Estimate (Monthly)
+
+### Assumptions
+
+- 100B documents, 100K QPS
+- 1 EB total storage, 1M docs/hour indexing
+
+| Resource | Quantity | Unit Cost | Monthly Cost |
+|----------|----------|-----------|--------------|
+| **Search Nodes** (r5.4xlarge, 128GB) | 1000 nodes | $1.01/hr | $727,200 |
+| **Coordinator Nodes** (c5.2xlarge) | 100 nodes | $0.34/hr | $24,480 |
+| **Storage (EBS gp3)** | 1 EB | $0.08/GB | $80,000,000 |
+| **Indexing Workers** (c5.4xlarge) | 200 nodes | $0.68/hr | $97,920 |
+| **Kafka (MSK)** | 50 brokers | $0.42/hr | $15,120 |
+| **Redis Cache** (r6g.2xlarge) | 50 nodes | $0.52/hr | $18,720 |
+| **ML Ranking** (GPU, p3.2xlarge) | 50 instances | $3.06/hr | $110,160 |
+| **Total** | | | **~$80,993,600/month** |
+
+### Note on Scale
+
+This is Google-scale pricing. Most companies would have:
+
+- 1-10M documents → ~$1,000/month (Elasticsearch Service)
+- 100M-1B documents → ~$50,000/month
+
+### Cost Optimization
+
+- Use SSD for hot data, HDD for cold
+- Aggressive segment merging reduces storage
+- Query result caching (60%+ hit rate)
+- Spot instances for indexing workers
+
+---
+
+## 14. Interview Presentation Tips
+
+```markdown
+### Opening (30 sec)
+"A search engine indexes billions of documents and returns relevant results in milliseconds.
+The key challenges are:
+1) Inverted index for O(1) term lookup
+2) Distributed search across 1000s of shards at 100K+ QPS
+3) Ranking using BM25 + ML re-ranking for relevance
+4) Sub-second freshness for news content"
+
+### Key Talking Points
+- "Inverted index maps terms to documents, not documents to terms"
+- "BM25 is the industry standard - improved TF-IDF with length normalization"
+- "Document sharding preferred over term sharding for parallelism"
+- "Two-phase retrieval: fast BM25 candidate selection + ML re-ranking"
+
+### Numbers to Remember
+- 100 Billion documents indexed
+- 100K+ QPS search traffic
+- 1 Exabyte storage
+- p99 < 200ms query latency
+- 1M docs/hour indexing rate
+
+### Common Follow-ups
+Q: "How do you handle a multi-word query?"
+A: "Intersect posting lists for AND, union for OR. Use position data for phrase queries."
+
+Q: "Why document sharding over term sharding?"
+A: "Multi-term queries would require hitting every shard with term sharding."
+
+Q: "How do you handle typos?"
+A: "Edit distance for suggestions, n-gram index for fuzzy matching, phonetic for sound-alike."
+```
+
+---
 
 ### Google-Specific Knowledge
 

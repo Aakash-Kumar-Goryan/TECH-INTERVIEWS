@@ -91,6 +91,11 @@
 * **RabbitMQ (Push-based/Smart Broker):** Good for complex routing, job queues, per-message acknowledgement. Lower throughput.
 * **Kafka (Pull-based/Dumb Broker):** Log-based. Consumers track their own offset. High throughput (sequential disk I/O), message replayability, stream processing.
 
+**Q: How do you handle the "Last Room" problem (Race Condition) in a Hotel Booking System?**
+
+* **A:** **Optimistic Locking** at the database level (`UPDATE inventory SET count = count - 1 WHERE count > 0`).
+* **Edge Case:** If syncing to OTAs (Airbnb/Booking.com), you accept **overbookings** and handle them via "Compensating Transactions" (refund/relocate) because you cannot lock external systems.
+
 **Q: Explain Isolation Levels (Read Committed vs. Serializable).**
 
 * **Read Committed:** No dirty reads. (Standard).
