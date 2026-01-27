@@ -203,3 +203,25 @@ auto sortRule = [](int a, int b) {
 };
 sort(v.begin(), v.end(), sortRule);
 ```
+
+## 9. Try-Catch & Exceptions
+
+Basic syntax (all you really need):
+
+```cpp
+#include <stdexcept>
+#include <iostream>
+
+try {
+    // code that might fail
+    throw std::runtime_error("something went wrong");
+} catch (const std::runtime_error& e) {
+    std::cout << e.what();
+}
+```
+
+Common Exception Types (`#include <stdexcept>`):
+
+- `invalid_argument`   // bad input
+- `logic_error`        // invariant broken / bug
+- `runtime_error`      // general failure
