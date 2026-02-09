@@ -10,8 +10,19 @@ import java.io.*;
 
 public class Solution {
     public static void main(String[] args) {
-        Scanner in = new Scanner(System.in);
-        // ... code ...
+        Scanner in = new Scanner(System.in);    
+        // 1. Read input
+        // Example:
+        // int n = in.nextInt();
+        // String s = in.nextLine();
+
+        // 2. Solve
+        // call helper methods if needed
+
+        // 3. Output
+        // System.out.println(result);
+
+        in.close();
     }
 }
 ```
